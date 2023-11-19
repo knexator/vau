@@ -76,6 +76,9 @@ function lineTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
   ctx.lineTo(x, y);
 }
 
+// let spike_perc = CONFIG.tmp01;
+let spike_perc = 1 / 3;
+
 // actual game logic
 let cur_molecule = parseSexpr(`(+  (1 1 1) . (1 1 1))`);
 
@@ -101,8 +104,6 @@ const colorFromAtom: (atom: string) => Color = (() => {
 
 type MoleculeView = { pos: Vec2, halfside: number };
 function drawMolecule(data: Sexpr, view: MoleculeView) {
-  // let spike_perc = CONFIG.tmp01;
-  let spike_perc = 1 / 3;
   if (data.type === "atom") {
     ctx.beginPath();
     ctx.fillStyle = colorFromAtom(data.value).toHex();
@@ -145,7 +146,55 @@ function getChildView(parent: MoleculeView, is_left: boolean): MoleculeView {
 
 type VauView = { pos: Vec2, halfside: number };
 function drawVau(data: Pair, view: VauView) {
-  drawMolecule(data.right, view);
+  drawVau_matcher(data.left, view);
+  drawMolecule(data.right, {
+    halfside: view.halfside,
+    pos: view.pos.add(new Vec2(spike_perc * view.halfside / 2, view.halfside / 2)),
+  });
+}
+
+function drawVau_matcher(data: Sexpr, view: VauView) {
+  if (data.type === "atom") {
+    // todo: variables
+    let halfside = view.halfside;
+    ctx.beginPath();
+    ctx.fillStyle = colorFromAtom(data.value).toHex();
+    moveTo(ctx, view.pos.addX(halfside * spike_perc));
+    lineTo(ctx, view.pos.addY(-halfside));
+    lineTo(ctx, view.pos.add(new Vec2(-halfside, -halfside)));
+    lineTo(ctx, view.pos.add(new Vec2(-halfside, halfside)));
+    lineTo(ctx, view.pos.addY(halfside));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    let halfside = view.halfside;
+    ctx.beginPath();
+    ctx.fillStyle = COLORS.cons.toHex();
+    moveTo(ctx, view.pos.addX(halfside * spike_perc));
+    lineTo(ctx, view.pos.addY(-halfside));
+    let middle_right_pos = view.pos.addX(-halfside);
+    lineTo(ctx, middle_right_pos.add(new Vec2(0, -halfside)));
+    lineTo(ctx, middle_right_pos.add(new Vec2(spike_perc * halfside / 2, -halfside / 2)));
+    lineTo(ctx, middle_right_pos);
+    lineTo(ctx, middle_right_pos.add(new Vec2(spike_perc * halfside / 2, halfside / 2)));
+    lineTo(ctx, middle_right_pos.add(new Vec2(0, halfside)));
+    lineTo(ctx, view.pos.addY(halfside));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    drawVau_matcher(data.left, getVauMatcherChildView(view, true));
+    drawVau_matcher(data.right, getVauMatcherChildView(view, false));
+  }
+  // drawVau_matcher(data.left, view);
+}
+
+function getVauMatcherChildView(parent: VauView, is_left: boolean): VauView {
+  return {
+    pos: parent.pos.add(new Vec2(-parent.halfside, (is_left ? -1 : 1) * parent.halfside / 2)),
+    halfside: parent.halfside / 2,
+  };
 }
 
 
@@ -159,17 +208,19 @@ function every_frame(cur_timestamp: number) {
 
   let canvas_size = new Vec2(canvas.width, canvas.height);
 
+  spike_perc = CONFIG.tmp01;
+
   gl.clear(gl.COLOR_BUFFER_BIT);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.lineWidth = 2;
   drawMolecule(cur_molecule, {
-    pos: canvas_size.mul(new Vec2(.15, .5)),
+    pos: canvas_size.mul(new Vec2(.1, .5)),
     halfside: 200,
   });
 
   drawVau(cur_vau, {
-    pos: canvas_size.mul(new Vec2(.75, .5)),
+    pos: canvas_size.mul(new Vec2(.7, .5)),
     halfside: 200,
   })
 
