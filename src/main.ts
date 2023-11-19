@@ -32,7 +32,7 @@ type Pair = {
   right: Sexpr,
 }
 
-type Sexpr = Atom | Pair 
+type Sexpr = Atom | Pair
 
 
 const input = new Input();
@@ -48,6 +48,7 @@ const DEBUG = true;
 
 // The variables we might want to tune while playing
 const CONFIG = {
+  tmp01: .5,
   tmp1: 1.0,
   tmp50: 50,
   tmp250: 250,
@@ -57,7 +58,8 @@ const CONFIG = {
 
 if (DEBUG) {
   const gui = new GUI();
-  gui.add(CONFIG, "tmp1", 0, 2);
+  gui.add(CONFIG, "tmp01", 0, 1);
+  gui.add(CONFIG, "tmp-1", -1, 1);
   gui.add(CONFIG, "tmp50", 0, 100);
   gui.add(CONFIG, "tmp250", 0, 500);
   gui.add(CONFIG, "tmp500", 0, 1000);
@@ -97,16 +99,18 @@ const colorFromAtom: (atom: string) => Color = (() => {
   }
 })();
 
-type MoleculeView = {pos: Vec2, halfside: number};
+type MoleculeView = { pos: Vec2, halfside: number };
 function drawMolecule(data: Sexpr, view: MoleculeView) {
+  // let spike_perc = CONFIG.tmp01;
+  let spike_perc = 1 / 3;
   if (data.type === "atom") {
     ctx.beginPath();
     ctx.fillStyle = colorFromAtom(data.value).toHex();
-    moveTo(ctx, view.pos.addX(-view.halfside * .5));
-    lineTo(ctx, view.pos.addY(-view.halfside ));
-    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2 , -view.halfside )));
-    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2 , view.halfside )));
-    lineTo(ctx, view.pos.addY(view.halfside ));
+    moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
+    lineTo(ctx, view.pos.addY(-view.halfside));
+    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
+    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+    lineTo(ctx, view.pos.addY(view.halfside));
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -114,32 +118,32 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
     let halfside = view.halfside;
     ctx.beginPath();
     ctx.fillStyle = COLORS.cons.toHex();
-    moveTo(ctx, view.pos.addX(-halfside * .5));
+    moveTo(ctx, view.pos.addX(-halfside * spike_perc));
     lineTo(ctx, view.pos.addY(-halfside));
     let middle_right_pos = view.pos.addX(halfside / 2);
     lineTo(ctx, middle_right_pos.add(new Vec2(0, -halfside)));
-    lineTo(ctx, middle_right_pos.add(new Vec2(-halfside/4, -halfside/2)));
+    lineTo(ctx, middle_right_pos.add(new Vec2(-spike_perc * halfside / 2, -halfside / 2)));
     lineTo(ctx, middle_right_pos);
-    lineTo(ctx, middle_right_pos.add(new Vec2(-halfside/4, halfside/2)));
+    lineTo(ctx, middle_right_pos.add(new Vec2(-spike_perc * halfside / 2, halfside / 2)));
     lineTo(ctx, middle_right_pos.add(new Vec2(0, halfside)));
     lineTo(ctx, view.pos.addY(halfside));
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    
+
     drawMolecule(data.left, getChildView(view, true));
     drawMolecule(data.right, getChildView(view, false));
   }
 }
 
-function getChildView(parent: MoleculeView, is_left: boolean) : MoleculeView {
+function getChildView(parent: MoleculeView, is_left: boolean): MoleculeView {
   return {
-    pos: parent.pos.add(new Vec2(parent.halfside / 2, (is_left ? -1 : 1) * parent.halfside / 2 )),
+    pos: parent.pos.add(new Vec2(parent.halfside / 2, (is_left ? -1 : 1) * parent.halfside / 2)),
     halfside: parent.halfside / 2,
   };
 }
 
-type VauView = {pos: Vec2, halfside: number};
+type VauView = { pos: Vec2, halfside: number };
 function drawVau(data: Pair, view: VauView) {
   drawMolecule(data.right, view);
 }
@@ -156,7 +160,7 @@ function every_frame(cur_timestamp: number) {
   let canvas_size = new Vec2(canvas.width, canvas.height);
 
   gl.clear(gl.COLOR_BUFFER_BIT);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.lineWidth = 2;
   drawMolecule(cur_molecule, {
