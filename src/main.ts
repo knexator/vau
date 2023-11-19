@@ -64,8 +64,8 @@ if (DEBUG) {
   gui.add(CONFIG, "tmp250", 0, 500);
   gui.add(CONFIG, "tmp500", 0, 1000);
   gui.addColor(CONFIG, "color");
-  gui.domElement.style.bottom = "0px";
-  gui.domElement.style.top = "auto";
+  // gui.domElement.style.bottom = "0px";
+  // gui.domElement.style.top = "auto";
   // gui.hide();
 }
 
@@ -105,16 +105,29 @@ const colorFromAtom: (atom: string) => Color = (() => {
 type MoleculeView = { pos: Vec2, halfside: number };
 function drawMolecule(data: Sexpr, view: MoleculeView) {
   if (data.type === "atom") {
-    ctx.beginPath();
-    ctx.fillStyle = colorFromAtom(data.value).toHex();
-    moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
-    lineTo(ctx, view.pos.addY(-view.halfside));
-    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
-    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
-    lineTo(ctx, view.pos.addY(view.halfside));
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    if (data.value[0] === "@") {
+      ctx.beginPath();
+      ctx.fillStyle = colorFromAtom(data.value.slice(1)).toHex();
+      moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
+      lineTo(ctx, view.pos.addY(-view.halfside));
+      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
+      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+      lineTo(ctx, view.pos.addY(view.halfside));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.fillStyle = colorFromAtom(data.value).toHex();
+      moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
+      lineTo(ctx, view.pos.addY(-view.halfside));
+      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
+      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+      lineTo(ctx, view.pos.addY(view.halfside));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
   } else {
     let halfside = view.halfside;
     ctx.beginPath();
@@ -155,18 +168,32 @@ function drawVau(data: Pair, view: VauView) {
 
 function drawVau_matcher(data: Sexpr, view: VauView) {
   if (data.type === "atom") {
-    // todo: variables
-    let halfside = view.halfside;
-    ctx.beginPath();
-    ctx.fillStyle = colorFromAtom(data.value).toHex();
-    moveTo(ctx, view.pos.addX(halfside * spike_perc));
-    lineTo(ctx, view.pos.addY(-halfside));
-    lineTo(ctx, view.pos.add(new Vec2(-halfside, -halfside)));
-    lineTo(ctx, view.pos.add(new Vec2(-halfside, halfside)));
-    lineTo(ctx, view.pos.addY(halfside));
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    if (data.value[0] === "@") {
+      let halfside = view.halfside;
+      ctx.beginPath();
+      ctx.fillStyle = colorFromAtom(data.value.slice(1)).toHex();
+      moveTo(ctx, view.pos.addX(halfside * spike_perc));
+      lineTo(ctx, view.pos.addY(-halfside));
+      lineTo(ctx, view.pos.add(new Vec2(-halfside * 3, -halfside)));
+      lineTo(ctx, view.pos.addX(-halfside * 3 - halfside*spike_perc));
+      lineTo(ctx, view.pos.add(new Vec2(-halfside * 3, halfside)));
+      lineTo(ctx, view.pos.addY(halfside));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      let halfside = view.halfside;
+      ctx.beginPath();
+      ctx.fillStyle = colorFromAtom(data.value).toHex();
+      moveTo(ctx, view.pos.addX(halfside * spike_perc));
+      lineTo(ctx, view.pos.addY(-halfside));
+      lineTo(ctx, view.pos.add(new Vec2(-halfside, -halfside)));
+      lineTo(ctx, view.pos.add(new Vec2(-halfside, halfside)));
+      lineTo(ctx, view.pos.addY(halfside));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
   } else {
     let halfside = view.halfside;
     ctx.beginPath();
@@ -220,7 +247,7 @@ function every_frame(cur_timestamp: number) {
   });
 
   drawVau(cur_vau, {
-    pos: canvas_size.mul(new Vec2(.7, .5)),
+    pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
     halfside: 200,
   })
 

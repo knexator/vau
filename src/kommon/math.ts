@@ -160,6 +160,10 @@ export class Vec2 {
         return Math.atan2(other.y - this.y, other.x - this.x);
     }
 
+    subX(x: number): Vec2 {
+        return new Vec2(this.x - x, this.y);
+    }
+
     addX(x: number): Vec2 {
         return new Vec2(this.x + x, this.y);
     }
