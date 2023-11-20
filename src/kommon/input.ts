@@ -175,14 +175,14 @@ export class MouseListener {
         this.buttons = ev.buttons;
         this.clientX = ev.clientX;
         this.clientY = ev.clientY;
-        ev.preventDefault();
-        return false;
+        // ev.preventDefault();
+        // return false;
     }
 
     private onWheelEvent(ev: WheelEvent) {
         this.wheel = ev.deltaY;
-        ev.preventDefault();
-        return false;
+    //     ev.preventDefault();
+    //     return false;
     }
 }
 
