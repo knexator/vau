@@ -80,7 +80,8 @@ function lineTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
 let spike_perc = 1 / 3;
 
 // actual game logic
-let cur_molecule = parseSexpr(`(+  (1 1 1) . (1 1 1))`);
+let cur_base_molecule = parseSexpr(`(+  (1 1 1) . (1 1 1))`);
+let cur_molecule_address = [] as boolean[];
 
 let cur_vau: Pair = parseSexpr(`(
   (+ . ((@h . @t) . @b))
@@ -152,6 +153,22 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
   }
 }
 
+// Given that the child at the given path has the given view, get the grandparents view
+function getGrandparentView(child: MoleculeView, path_to_child: boolean[]): MoleculeView {
+  let result = child;
+  for (let k = path_to_child.length - 1; k >= 0; k--) {
+    result = getParentView(result, path_to_child[k]);
+  }
+  return result;
+}
+
+function getParentView(child: MoleculeView, is_left: boolean): MoleculeView {
+  return {
+    pos: child.pos.add(new Vec2(-child.halfside, (is_left ? 1 : -1) * child.halfside)),
+    halfside: child.halfside * 2,
+  };
+}
+
 function getChildView(parent: MoleculeView, is_left: boolean): MoleculeView {
   return {
     pos: parent.pos.add(new Vec2(parent.halfside / 2, (is_left ? -1 : 1) * parent.halfside / 2)),
@@ -178,7 +195,7 @@ function drawVau_matcher(data: Sexpr, view: VauView) {
       moveTo(ctx, view.pos.addX(halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-halfside));
       lineTo(ctx, view.pos.add(new Vec2(-halfside * 3, -halfside)));
-      lineTo(ctx, view.pos.addX(-halfside * 3 - halfside*spike_perc));
+      lineTo(ctx, view.pos.addX(-halfside * 3 - halfside * spike_perc));
       lineTo(ctx, view.pos.add(new Vec2(-halfside * 3, halfside)));
       lineTo(ctx, view.pos.addY(halfside));
       ctx.closePath();
@@ -238,17 +255,26 @@ function every_frame(cur_timestamp: number) {
   input.startFrame();
 
   let canvas_size = new Vec2(canvas.width, canvas.height);
-
   spike_perc = CONFIG.tmp01;
+
+  if (input.keyboard.wasPressed(KeyCode.KeyA)) {
+    cur_molecule_address.pop();
+  }
+  if (input.keyboard.wasPressed(KeyCode.KeyW)) {
+    cur_molecule_address.push(true);
+  }
+  if (input.keyboard.wasPressed(KeyCode.KeyS)) {
+    cur_molecule_address.push(false);
+  }
 
   gl.clear(gl.COLOR_BUFFER_BIT);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.lineWidth = 2;
-  drawMolecule(cur_molecule, {
+  drawMolecule(cur_base_molecule, getGrandparentView({
     pos: canvas_size.mul(new Vec2(.1, .5)),
     halfside: 200,
-  });
+  }, cur_molecule_address));
 
   drawVau(cur_vau, {
     pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
