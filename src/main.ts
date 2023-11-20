@@ -94,6 +94,19 @@ let cur_vau: Pair = parseSexpr(`(
   (+ . (@t . (@h . @b)))
 )`) as Pair;
 
+function getAtAddress(molecule: Sexpr, address: boolean[]): Sexpr | null {
+  let result = molecule;
+  for (let k = 0; k < address.length; k++) {
+    if (result.type === "atom") return null;
+    result = address[k] ? result.left : result.right;
+  }
+  return result;
+}
+
+function isValidAddress(molecule: Sexpr, address: boolean[]): boolean {
+  return getAtAddress(molecule, address) !== null;
+}
+
 const colorFromAtom: (atom: string) => Color = (() => {
   var generated = new Map<string, Color>();
   return (atom: string) => {
@@ -305,10 +318,14 @@ function lerpMoleculeViews(a: MoleculeView, b: MoleculeView, t: number): Molecul
 let cur_molecule_view = {
   lerp: lerpMoleculeViews,
   duration: .1,
-  setTarget: function(v: MoleculeView): void {
+  setTarget: function (v: MoleculeView): void {
     this.anim = makeLerpAnim(getFinalValue(this.anim), v, this.duration, this.lerp);
   },
   anim: makeConstantAnim(base_molecule_view),
+  updateTarget: function (): void {
+    let new_target = getGrandparentView(base_molecule_view, cur_molecule_address);
+    this.setTarget(new_target);
+  }
 }
 
 let last_timestamp = 0;
@@ -322,16 +339,22 @@ function every_frame(cur_timestamp: number) {
   spike_perc = CONFIG.tmp01;
 
   if (input.keyboard.wasPressed(KeyCode.KeyA)) {
-    cur_molecule_address.pop();
-    cur_molecule_view.setTarget(getGrandparentView(base_molecule_view, cur_molecule_address));
+    if (cur_molecule_address.length > 0) {
+      cur_molecule_address.pop();
+      cur_molecule_view.updateTarget();
+    }
   }
   if (input.keyboard.wasPressed(KeyCode.KeyW)) {
-    cur_molecule_address.push(true);
-    cur_molecule_view.setTarget(getGrandparentView(base_molecule_view, cur_molecule_address));
+    if (isValidAddress(cur_base_molecule, [...cur_molecule_address, true])) {
+      cur_molecule_address.push(true);
+      cur_molecule_view.updateTarget();
+    }
   }
   if (input.keyboard.wasPressed(KeyCode.KeyS)) {
-    cur_molecule_address.push(false);
-    cur_molecule_view.setTarget(getGrandparentView(base_molecule_view, cur_molecule_address));
+    if (isValidAddress(cur_base_molecule, [...cur_molecule_address, false])) {
+      cur_molecule_address.push(false);
+      cur_molecule_view.updateTarget();
+    }
   }
 
   gl.clear(gl.COLOR_BUFFER_BIT);

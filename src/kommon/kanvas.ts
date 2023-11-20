@@ -794,14 +794,14 @@ export class Color {
     }
 
     toHex(include_alpha: boolean = false): string {
-        let i = (f: number) => Math.floor(255 * f).toString(16);
+        let i = (f: number) => Math.floor(255 * f).toString(16).padStart(2, '0');
         let result = `#${i(this.r)}${i(this.g)}${i(this.b)}`
         if (include_alpha) {
             result += `${i(this.a)}`
         }
         return result;
     }
-    
+
     static lerp(a: Color, b: Color, t: number): Color {
         return new Color(
             lerp(a.r, b.r, t),
