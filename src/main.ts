@@ -82,7 +82,7 @@ let spike_perc = 1 / 3;
 
 // actual game logic
 let cur_base_molecule = parseSexpr(`(+  (1 1 1) . (1 1 1))`);
-let cur_molecule_address = [] as boolean[];
+let cur_molecule_address = [] as Address;
 const base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
   halfside: 200,
@@ -94,7 +94,9 @@ let cur_vau: Pair = parseSexpr(`(
   (+ . (@t . (@h . @b)))
 )`) as Pair;
 
-function getAtAddress(molecule: Sexpr, address: boolean[]): Sexpr | null {
+type Address = boolean[];
+
+function getAtAddress(molecule: Sexpr, address: Address): Sexpr | null {
   let result = molecule;
   for (let k = 0; k < address.length; k++) {
     if (result.type === "atom") return null;
@@ -103,7 +105,94 @@ function getAtAddress(molecule: Sexpr, address: boolean[]): Sexpr | null {
   return result;
 }
 
-function isValidAddress(molecule: Sexpr, address: boolean[]): boolean {
+function cloneSexpr(sexpr: Sexpr): Sexpr {
+  if (sexpr.type === "atom") {
+    return { type: "atom", value: sexpr.value };
+  } else {
+    return {
+      type: "pair",
+      left: cloneSexpr(sexpr.left),
+      right: cloneSexpr(sexpr.right)
+    };
+  }
+}
+
+function setAtAddress(molecule: Sexpr, address: Address, value: Sexpr): Sexpr {
+  if (address.length === 0) return value;
+  let result = cloneSexpr(molecule);
+  let parent = result;
+  for (let k = 0; k < address.length - 1; k++) {
+    if (parent.type === "atom") throw new Error(`cant set ${molecule} at address ${address}`);
+    parent = address[k] ? parent.left : parent.right;
+  }
+  if (parent.type === "atom") throw new Error(`cant set ${molecule} at address ${address}`);
+  if (address[address.length]) {
+    parent.left = value;
+  } else {
+    parent.right = value;
+  }
+  return result;
+}
+
+type Binding = {
+  name: string,
+  address: Address,
+  value: Sexpr,
+}
+// returns null if the template doesn't fit
+function generateBindings(molecule: Sexpr, template: Sexpr, address: Address = []): Binding[] | null {
+  if (template.type === "atom") {
+    if (template.value[0] === "@") {
+      return [{ name: template.value, address: address, value: structuredClone(molecule) }];
+    } else if (molecule.type === "atom" && molecule.value === template.value) {
+      return [];
+    } else {
+      return null;
+    }
+  } else {
+    if (molecule.type === "atom") {
+      return null;
+    } else {
+      let left_match = generateBindings(molecule.left, template.left, [...address, true]);
+      let right_match = generateBindings(molecule.right, template.right, [...address, false]);
+      if (left_match === null || right_match === null) {
+        return null;
+      } else {
+        return left_match.concat(right_match);
+      }
+    }
+  }
+}
+
+function applyBindings(template: Sexpr, bindings: Binding[]): Sexpr {
+  if (template.type === "atom") {
+    if (template.value[0] === "@") {
+      let matching_binding = bindings.find(({ name }) => name === template.value);
+      if (matching_binding !== undefined) {
+        return matching_binding.value;
+      } else {
+        return template;
+      }
+    } else {
+      return template;
+    }
+  } else {
+    return {
+      type: "pair",
+      left: applyBindings(template.left, bindings),
+      right: applyBindings(template.right, bindings)
+    };
+  }
+}
+
+function afterVau(molecule: Sexpr, vau: Pair): Sexpr | null {
+  let bindings = generateBindings(molecule, vau.left);
+  if (bindings === null) return null;
+  return applyBindings(vau.right, bindings);
+}
+
+
+function isValidAddress(molecule: Sexpr, address: Address): boolean {
   return getAtAddress(molecule, address) !== null;
 }
 
@@ -172,7 +261,7 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
 }
 
 // Given that the child at the given path has the given view, get the grandparents view
-function getGrandparentView(child: MoleculeView, path_to_child: boolean[]): MoleculeView {
+function getGrandparentView(child: MoleculeView, path_to_child: Address): MoleculeView {
   let result = child;
   for (let k = path_to_child.length - 1; k >= 0; k--) {
     result = getParentView(result, path_to_child[k]);
@@ -301,20 +390,6 @@ function lerpMoleculeViews(a: MoleculeView, b: MoleculeView, t: number): Molecul
   };
 }
 
-// function makeZoomInAnim(original: MoleculeView, is_left: boolean): Anim<MoleculeView> {
-//   let target = getParentView(original, is_left);
-//   return {
-//     progress: 0,
-//     duration: .5,
-//     callback: (t: number) => {
-//       return {
-//         pos: Vec2.lerp(original.pos, target.pos, t),
-//         halfside: lerp(original.halfside, target.halfside, t),
-//       } as MoleculeView;
-//     }
-//   };
-// }
-
 let cur_molecule_view = {
   lerp: lerpMoleculeViews,
   duration: .1,
@@ -354,6 +429,13 @@ function every_frame(cur_timestamp: number) {
     if (isValidAddress(cur_base_molecule, [...cur_molecule_address, false])) {
       cur_molecule_address.push(false);
       cur_molecule_view.updateTarget();
+    }
+  }
+
+  if (input.keyboard.wasPressed(KeyCode.Space)) {
+    let new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address)!, cur_vau);
+    if (new_molecule !== null) {
+      cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
     }
   }
 
