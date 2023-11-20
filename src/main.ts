@@ -107,6 +107,7 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
   if (data.type === "atom") {
     if (data.value[0] === "@") {
       ctx.beginPath();
+      ctx.globalAlpha = .5;
       ctx.fillStyle = colorFromAtom(data.value.slice(1)).toHex();
       moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-view.halfside));
@@ -116,6 +117,7 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      ctx.globalAlpha = 1;
     } else {
       ctx.beginPath();
       ctx.fillStyle = colorFromAtom(data.value).toHex();
@@ -172,6 +174,7 @@ function drawVau_matcher(data: Sexpr, view: VauView) {
       let halfside = view.halfside;
       ctx.beginPath();
       ctx.fillStyle = colorFromAtom(data.value.slice(1)).toHex();
+      ctx.globalAlpha = .5;
       moveTo(ctx, view.pos.addX(halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-halfside));
       lineTo(ctx, view.pos.add(new Vec2(-halfside * 3, -halfside)));
@@ -181,6 +184,7 @@ function drawVau_matcher(data: Sexpr, view: VauView) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      ctx.globalAlpha = 1;
     } else {
       let halfside = view.halfside;
       ctx.beginPath();
