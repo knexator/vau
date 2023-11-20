@@ -302,7 +302,14 @@ function lerpMoleculeViews(a: MoleculeView, b: MoleculeView, t: number): Molecul
 //   };
 // }
 
-let cur_molecule_view_anim: Anim<MoleculeView> = makeConstantAnim(base_molecule_view);
+let cur_molecule_view = {
+  lerp: lerpMoleculeViews,
+  duration: .1,
+  setTarget: function(v: MoleculeView): void {
+    this.anim = makeLerpAnim(getFinalValue(this.anim), v, this.duration, this.lerp);
+  },
+  anim: makeConstantAnim(base_molecule_view),
+}
 
 let last_timestamp = 0;
 // main loop; game logic lives here
@@ -315,28 +322,23 @@ function every_frame(cur_timestamp: number) {
   spike_perc = CONFIG.tmp01;
 
   if (input.keyboard.wasPressed(KeyCode.KeyA)) {
-    let prev_view = getGrandparentView(base_molecule_view, cur_molecule_address);
     cur_molecule_address.pop();
-    let new_view = getGrandparentView(base_molecule_view, cur_molecule_address);
-    cur_molecule_view_anim = makeLerpAnim(prev_view, new_view, .1, lerpMoleculeViews);
+    cur_molecule_view.setTarget(getGrandparentView(base_molecule_view, cur_molecule_address));
   }
   if (input.keyboard.wasPressed(KeyCode.KeyW)) {
     cur_molecule_address.push(true);
-    let new_view = getGrandparentView(base_molecule_view, cur_molecule_address);
-    cur_molecule_view_anim = makeLerpAnim(getFinalValue(cur_molecule_view_anim), new_view, .1, lerpMoleculeViews);
+    cur_molecule_view.setTarget(getGrandparentView(base_molecule_view, cur_molecule_address));
   }
   if (input.keyboard.wasPressed(KeyCode.KeyS)) {
-    let prev_view = getGrandparentView(base_molecule_view, cur_molecule_address);
     cur_molecule_address.push(false);
-    let new_view = getGrandparentView(base_molecule_view, cur_molecule_address);
-    cur_molecule_view_anim = makeLerpAnim(prev_view, new_view, .1, lerpMoleculeViews);
+    cur_molecule_view.setTarget(getGrandparentView(base_molecule_view, cur_molecule_address));
   }
 
   gl.clear(gl.COLOR_BUFFER_BIT);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.lineWidth = 2;
-  drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view_anim, delta_time));
+  drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
 
   drawVau(cur_vau, {
     pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
