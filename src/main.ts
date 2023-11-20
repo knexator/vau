@@ -9,7 +9,7 @@ import { DoubledCoord, Hex, HexMap, Layout, OffsetCoord } from "./kommon/hex";
 import { Input, KeyCode, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
 import { fromCount, objectMap, zip2 } from "./kommon/kommon";
-import { Rectangle, Vec2, mod, towards as approach, lerp } from "./kommon/math";
+import { Rectangle, Vec2, mod, towards as approach, lerp, inRange } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 
 import grammar from "./sexpr.pegjs?raw"
@@ -313,6 +313,24 @@ function getGrandchildView(grandparent: MoleculeView, path_to_child: Address): M
   return result;
 }
 
+function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: MoleculeView): Address | null {
+  let delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
+  if (inRange(delta_pos.x, 0, 2) && inRange(delta_pos.y, -1, 1)) {
+    // are we selecting a subchild?
+    if (data.type === "pair" && delta_pos.x >= .5) {
+      let is_left = delta_pos.y <= 0;
+      let maybe_child = moleculeAdressFromScreenPosition(screen_pos, is_left ? data.left : data.right, getChildView(view, is_left));
+      if (maybe_child !== null) {
+        return [is_left, ...maybe_child];
+      }
+    }
+    // no subchild, path to this
+    return [];
+  } else {
+    return null;
+  }
+}
+
 type VauView = { pos: Vec2, halfside: number };
 function drawVau(data: Pair, view: VauView) {
   drawVau_matcher(data.left, view);
@@ -513,7 +531,10 @@ function every_frame(cur_timestamp: number) {
     halfside: 200,
   })
 
-  drawMoleculeHighlight(getGrandchildView(base_molecule_view, [false, true]));
+  let mouse_path = moleculeAdressFromScreenPosition(new Vec2(input.mouse.clientX, input.mouse.clientY), cur_base_molecule, advanceAnim(cur_molecule_view.anim, 0))
+  if (mouse_path !== null) {
+    drawMoleculeHighlight(getGrandchildView(base_molecule_view, mouse_path));
+  }
 
   requestAnimationFrame(every_frame);
 }
