@@ -134,7 +134,7 @@ function setAtAddress(molecule: Sexpr, address: Address, value: Sexpr): Sexpr {
     parent = address[k] ? parent.left : parent.right;
   }
   if (parent.type === "atom") throw new Error(`cant set ${molecule} at address ${address}`);
-  if (address[address.length]) {
+  if (address[address.length - 1]) {
     parent.left = value;
   } else {
     parent.right = value;
@@ -445,6 +445,31 @@ function every_frame(cur_timestamp: number) {
   }
   if (input.keyboard.wasPressed(KeyCode.KeyK)) {
     cur_vau_index = mod(cur_vau_index + 1, cur_vaus.length);
+  }
+
+  const digits = [
+    KeyCode.Digit1,
+    KeyCode.Digit2,
+    KeyCode.Digit3,
+    KeyCode.Digit4,
+    KeyCode.Digit5,
+    KeyCode.Digit6,
+    KeyCode.Digit7,
+    KeyCode.Digit8,
+    KeyCode.Digit9,
+  ];
+  digits.forEach((key, k) => {
+    if (input.keyboard.wasPressed(key)) {
+      console.log(cur_molecule_address);
+      cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, { type: "atom", value: k.toString() });
+    }
+  });
+  if (input.keyboard.wasPressed(KeyCode.Digit0)) {
+    cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, {
+      type: "pair",
+      left: { type: "atom", value: "0" },
+      right: { type: "atom", value: "0" },
+    });
   }
 
 
