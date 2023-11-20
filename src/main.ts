@@ -88,11 +88,19 @@ const base_molecule_view: MoleculeView = {
   halfside: 200,
 }
 
-let cur_vau: Pair = parseSexpr(`(
-  (+ . ((@h . @t) . @b))
-  .
-  (+ . (@t . (@h . @b)))
-)`) as Pair;
+const cur_vaus: Pair[] = [
+  parseSexpr(`(
+    (+ . ((@h . @t) . @b))
+    .
+    (+ . (@t . (@h . @b)))
+  )`) as Pair,
+  parseSexpr(`(
+    (+ . (nil . @a))
+    .
+    @a
+  )`) as Pair,
+];
+let cur_vau_index = 0;
 
 type Address = boolean[];
 
@@ -432,8 +440,16 @@ function every_frame(cur_timestamp: number) {
     }
   }
 
+  if (input.keyboard.wasPressed(KeyCode.KeyI)) {
+    cur_vau_index = mod(cur_vau_index - 1, cur_vaus.length);
+  }
+  if (input.keyboard.wasPressed(KeyCode.KeyK)) {
+    cur_vau_index = mod(cur_vau_index + 1, cur_vaus.length);
+  }
+
+
   if (input.keyboard.wasPressed(KeyCode.Space)) {
-    let new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address)!, cur_vau);
+    let new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address)!, cur_vaus[cur_vau_index]);
     if (new_molecule !== null) {
       cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
     }
@@ -445,7 +461,7 @@ function every_frame(cur_timestamp: number) {
   ctx.lineWidth = 2;
   drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
 
-  drawVau(cur_vau, {
+  drawVau(cur_vaus[cur_vau_index], {
     pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
     halfside: 200,
   })
