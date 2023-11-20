@@ -40,6 +40,7 @@ const gl = initGlFromSelector("#gl_canvas");
 const ctx = initCtxFromSelector("#ctx_canvas");
 const canvas = gl.canvas as HTMLCanvasElement;
 gl.clearColor(...COLORS.background.toArray());
+let canvas_size = new Vec2(canvas.width, canvas.height);
 
 const gfx = new NaiveSpriteGraphics(gl);
 // const gfx2 = new ShakuStyleGraphics(gl);
@@ -82,6 +83,10 @@ let spike_perc = 1 / 3;
 // actual game logic
 let cur_base_molecule = parseSexpr(`(+  (1 1 1) . (1 1 1))`);
 let cur_molecule_address = [] as boolean[];
+const base_molecule_view: MoleculeView = {
+  pos: canvas_size.mul(new Vec2(.1, .5)),
+  halfside: 200,
+}
 
 let cur_vau: Pair = parseSexpr(`(
   (+ . ((@h . @t) . @b))
@@ -245,6 +250,59 @@ function getVauMatcherChildView(parent: VauView, is_left: boolean): VauView {
   };
 }
 
+type Anim<T> = { progress: number, duration: number, callback: (t: number) => T }
+
+function advanceAnim<T>(anim: Anim<T>, dt: number): T {
+  anim.progress = approach(anim.progress, 1, dt / anim.duration);
+  return anim.callback(anim.progress);
+}
+
+function makeConstantAnim<T>(value: T): Anim<T> {
+  return {
+    progress: 1,
+    duration: 1,
+    callback(_t) {
+      return value;
+    },
+  }
+}
+
+function makeLerpAnim<T>(a: T, b: T, duration: number, lerp: (a: T, b: T, t: number) => T): Anim<T> {
+  return {
+    progress: 0,
+    duration: duration,
+    callback(t) {
+      return lerp(a, b, t);
+    },
+  }
+}
+
+function getFinalValue<T>(anim: Anim<T>): T {
+  return anim.callback(1);
+}
+
+function lerpMoleculeViews(a: MoleculeView, b: MoleculeView, t: number): MoleculeView {
+  return {
+    pos: Vec2.lerp(a.pos, b.pos, t),
+    halfside: lerp(a.halfside, b.halfside, t),
+  };
+}
+
+// function makeZoomInAnim(original: MoleculeView, is_left: boolean): Anim<MoleculeView> {
+//   let target = getParentView(original, is_left);
+//   return {
+//     progress: 0,
+//     duration: .5,
+//     callback: (t: number) => {
+//       return {
+//         pos: Vec2.lerp(original.pos, target.pos, t),
+//         halfside: lerp(original.halfside, target.halfside, t),
+//       } as MoleculeView;
+//     }
+//   };
+// }
+
+let cur_molecule_view_anim: Anim<MoleculeView> = makeConstantAnim(base_molecule_view);
 
 let last_timestamp = 0;
 // main loop; game logic lives here
@@ -254,27 +312,31 @@ function every_frame(cur_timestamp: number) {
   last_timestamp = cur_timestamp;
   input.startFrame();
 
-  let canvas_size = new Vec2(canvas.width, canvas.height);
   spike_perc = CONFIG.tmp01;
 
   if (input.keyboard.wasPressed(KeyCode.KeyA)) {
+    let prev_view = getGrandparentView(base_molecule_view, cur_molecule_address);
     cur_molecule_address.pop();
+    let new_view = getGrandparentView(base_molecule_view, cur_molecule_address);
+    cur_molecule_view_anim = makeLerpAnim(prev_view, new_view, .1, lerpMoleculeViews);
   }
   if (input.keyboard.wasPressed(KeyCode.KeyW)) {
     cur_molecule_address.push(true);
+    let new_view = getGrandparentView(base_molecule_view, cur_molecule_address);
+    cur_molecule_view_anim = makeLerpAnim(getFinalValue(cur_molecule_view_anim), new_view, .1, lerpMoleculeViews);
   }
   if (input.keyboard.wasPressed(KeyCode.KeyS)) {
+    let prev_view = getGrandparentView(base_molecule_view, cur_molecule_address);
     cur_molecule_address.push(false);
+    let new_view = getGrandparentView(base_molecule_view, cur_molecule_address);
+    cur_molecule_view_anim = makeLerpAnim(prev_view, new_view, .1, lerpMoleculeViews);
   }
 
   gl.clear(gl.COLOR_BUFFER_BIT);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.lineWidth = 2;
-  drawMolecule(cur_base_molecule, getGrandparentView({
-    pos: canvas_size.mul(new Vec2(.1, .5)),
-    halfside: 200,
-  }, cur_molecule_address));
+  drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view_anim, delta_time));
 
   drawVau(cur_vau, {
     pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
