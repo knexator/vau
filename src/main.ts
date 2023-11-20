@@ -6,7 +6,7 @@ const COLORS = {
 import GUI from "lil-gui";
 import { Grid2D } from "./kommon/grid2D";
 import { DoubledCoord, Hex, HexMap, Layout, OffsetCoord } from "./kommon/hex";
-import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
+import { Input, KeyCode, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
 import { fromCount, objectMap, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp } from "./kommon/math";
@@ -268,9 +268,22 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
   }
 }
 
+function drawMoleculeHighlight(view: MoleculeView) {
+  ctx.beginPath();
+  ctx.strokeStyle = "cyan";
+  moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
+  lineTo(ctx, view.pos.addY(-view.halfside));
+  lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
+  lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+  lineTo(ctx, view.pos.addY(view.halfside));
+  ctx.closePath();
+  ctx.stroke();
+  ctx.strokeStyle = "black";
+}
+
 // Given that the child at the given path has the given view, get the grandparents view
-function getGrandparentView(child: MoleculeView, path_to_child: Address): MoleculeView {
-  let result = child;
+function getGrandparentView(grandchild: MoleculeView, path_to_child: Address): MoleculeView {
+  let result = grandchild;
   for (let k = path_to_child.length - 1; k >= 0; k--) {
     result = getParentView(result, path_to_child[k]);
   }
@@ -289,6 +302,15 @@ function getChildView(parent: MoleculeView, is_left: boolean): MoleculeView {
     pos: parent.pos.add(new Vec2(parent.halfside / 2, (is_left ? -1 : 1) * parent.halfside / 2)),
     halfside: parent.halfside / 2,
   };
+}
+
+// Given that the grandparent has the given view, find the view at the given address
+function getGrandchildView(grandparent: MoleculeView, path_to_child: Address): MoleculeView {
+  let result = grandparent;
+  for (let k = 0; k < path_to_child.length; k++) {
+    result = getChildView(result, path_to_child[k]);
+  }
+  return result;
 }
 
 type VauView = { pos: Vec2, halfside: number };
@@ -490,6 +512,8 @@ function every_frame(cur_timestamp: number) {
     pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
     halfside: 200,
   })
+
+  drawMoleculeHighlight(getGrandchildView(base_molecule_view, [false, true]));
 
   requestAnimationFrame(every_frame);
 }
