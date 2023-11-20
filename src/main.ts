@@ -533,11 +533,16 @@ function every_frame(cur_timestamp: number) {
 
   let mouse_path = moleculeAdressFromScreenPosition(
     new Vec2(input.mouse.clientX, input.mouse.clientY),
-    getAtAddress(cur_base_molecule, cur_molecule_address)!,
-    base_molecule_view,
+    cur_base_molecule,
+    advanceAnim(cur_molecule_view.anim, 0),
   );
   if (mouse_path !== null) {
-    drawMoleculeHighlight(getGrandchildView(base_molecule_view, mouse_path));
+    drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path));
+    if (input.mouse.wasPressed(MouseButton.Right)) {
+      // TODO: better lerp
+      cur_molecule_address = mouse_path;
+      cur_molecule_view.updateTarget();
+    }
   }
 
   requestAnimationFrame(every_frame);
