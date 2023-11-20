@@ -315,9 +315,9 @@ function getGrandchildView(grandparent: MoleculeView, path_to_child: Address): M
 
 function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: MoleculeView): Address | null {
   let delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
-  if (inRange(delta_pos.x, 0, 2) && inRange(delta_pos.y, -1, 1)) {
+  if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, (Math.abs(delta_pos.y)-1) * spike_perc, 2)) {
     // are we selecting a subchild?
-    if (data.type === "pair" && delta_pos.x >= .5) {
+    if (data.type === "pair" && delta_pos.x >= .5 - spike_perc/2) {
       let is_left = delta_pos.y <= 0;
       let maybe_child = moleculeAdressFromScreenPosition(screen_pos, is_left ? data.left : data.right, getChildView(view, is_left));
       if (maybe_child !== null) {
