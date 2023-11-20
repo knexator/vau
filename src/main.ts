@@ -81,7 +81,7 @@ function lineTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
 let spike_perc = 1 / 3;
 
 // actual game logic
-let cur_base_molecule = parseSexpr(`(+  (1 1 1) . (1 1 1))`);
+let cur_base_molecule = parseSexpr(`(+  (1 1 1) . (+ (1 1) . (1)))`);
 let cur_molecule_address = [] as Address;
 const base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
