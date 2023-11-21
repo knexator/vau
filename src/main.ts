@@ -324,6 +324,14 @@ function getGrandchildView(grandparent: MoleculeView, path_to_child: Address): M
   return result;
 }
 
+function getMatcherGrandchildView(grandparent: VauView, path_to_child: Address): VauView {
+  let result = grandparent;
+  for (let k = 0; k < path_to_child.length; k++) {
+    result = getMatcherChildView(result, path_to_child[k]);
+  }
+  return result;
+}
+
 function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: MoleculeView): Address | null {
   const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
   if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, (Math.abs(delta_pos.y) - 1) * spike_perc, 2)) {
@@ -342,9 +350,27 @@ function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: M
   }
 }
 
+function matcherAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: VauView): Address | null {
+  const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
+  if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, -2, -(Math.abs(delta_pos.y) - 1) * spike_perc)) {
+    // are we selecting a subchild?
+    if (data.type === "pair" && -delta_pos.x >= .5 - spike_perc / 2) {
+      const is_left = delta_pos.y <= 0;
+      const maybe_child = matcherAdressFromScreenPosition(screen_pos, is_left ? data.left : data.right, getMatcherChildView(view, is_left));
+      if (maybe_child !== null) {
+        return [is_left, ...maybe_child];
+      }
+    }
+    // no subchild, path to this
+    return [];
+  } else {
+    return null;
+  }
+}
+
 type VauView = { pos: Vec2, halfside: number };
 function drawVau(data: Pair, view: VauView) {
-  drawVau_matcher(data.left, view);
+  drawMatcher(data.left, view);
   drawMolecule(data.right, getVauMoleculeView(view));
 }
 
@@ -355,7 +381,21 @@ function getVauMoleculeView(view: VauView): MoleculeView {
   };
 }
 
-function drawVau_matcher(data: Sexpr, view: VauView) {
+function drawMatcherHighlight(view: VauView, color: string) {
+  ctx.strokeStyle = color;
+  moveTo(ctx, view.pos.addX(view.halfside * spike_perc));
+  lineTo(ctx, view.pos.addY(-view.halfside));
+  lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, -view.halfside)));
+  lineTo(ctx, view.pos.addX(-view.halfside * (3 + spike_perc)));
+  lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, view.halfside)));
+  lineTo(ctx, view.pos.addY(view.halfside));
+  ctx.closePath();
+  ctx.stroke();
+  ctx.strokeStyle = "black";
+}
+
+
+function drawMatcher(data: Sexpr, view: VauView) {
   if (data.type === "atom") {
     if (data.value[0] === "@") {
       const halfside = view.halfside;
@@ -402,13 +442,13 @@ function drawVau_matcher(data: Sexpr, view: VauView) {
     ctx.fill();
     ctx.stroke();
 
-    drawVau_matcher(data.left, getVauMatcherChildView(view, true));
-    drawVau_matcher(data.right, getVauMatcherChildView(view, false));
+    drawMatcher(data.left, getMatcherChildView(view, true));
+    drawMatcher(data.right, getMatcherChildView(view, false));
   }
   // drawVau_matcher(data.left, view);
 }
 
-function getVauMatcherChildView(parent: VauView, is_left: boolean): VauView {
+function getMatcherChildView(parent: VauView, is_left: boolean): VauView {
   return {
     pos: parent.pos.add(new Vec2(-parent.halfside, (is_left ? -1 : 1) * parent.halfside / 2)),
     halfside: parent.halfside / 2,
@@ -475,6 +515,9 @@ type MoleculePlace = { type: "none" } | {
 } | {
   type: "vau_molecule",
   vau_molecule_address: Address
+} | {
+  type: "vau_matcher",
+  vau_matcher_address: Address
 } | {
   type: "toolbar",
   toolbar_index: number,
@@ -581,7 +624,7 @@ function every_frame(cur_timestamp: number) {
   toolbar.forEach(({ view, value }) => drawMolecule(value, view));
 
   const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
-  let cur_mouse_place: MoleculePlace = { type: "none" };
+  let cur_mouse_place: MoleculePlace;
   {
     const molecule_mouse_path = moleculeAdressFromScreenPosition(
       mouse_pos,
@@ -593,6 +636,11 @@ function every_frame(cur_timestamp: number) {
       cur_vau.right,
       getVauMoleculeView(base_vau_view)
     );
+    const vau_matcher_mouse_path = matcherAdressFromScreenPosition(
+      mouse_pos,
+      cur_vau.left,
+      base_vau_view
+    );
     const hovering_toolbar_index: number | null = findIndex(toolbar, ({ view, value }) => {
       return moleculeAdressFromScreenPosition(mouse_pos, value, view) !== null;
     });
@@ -600,8 +648,12 @@ function every_frame(cur_timestamp: number) {
       cur_mouse_place = { type: "toolbar", toolbar_index: hovering_toolbar_index };
     } else if (vau_molecule_mouse_path !== null) {
       cur_mouse_place = { type: "vau_molecule", vau_molecule_address: vau_molecule_mouse_path };
+    } else if (vau_matcher_mouse_path !== null) {
+      cur_mouse_place = { type: "vau_matcher", vau_matcher_address: vau_matcher_mouse_path };
     } else if (molecule_mouse_path !== null) {
       cur_mouse_place = { type: "molecule", molecule_address: molecule_mouse_path };
+    } else {
+      cur_mouse_place = { type: "none" };
     }
   }
   if (cur_mouse_place.type === "molecule" && input.mouse.wasPressed(MouseButton.Right)) {
@@ -626,15 +678,20 @@ function every_frame(cur_timestamp: number) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: getAtAddress(cur_vau.right, cur_mouse_place.vau_molecule_address) };
           }
           break;
+        case "vau_matcher":
+          drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "cyan");
+          if (input.mouse.wasPressed(MouseButton.Left)) {
+            mouse_state = { type: "holding", source: cur_mouse_place, value: getAtAddress(cur_vau.left, cur_mouse_place.vau_matcher_address) };
+          }
+          break;
         case "toolbar":
-
           drawMoleculeHighlight(getGrandchildView(toolbar[cur_mouse_place.toolbar_index].view, []), "cyan");
           if (input.mouse.wasPressed(MouseButton.Left)) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: toolbar[cur_mouse_place.toolbar_index].value };
           }
           break;
         default:
-          break;
+          throw new Error("");
       }
       break;
     }
@@ -646,14 +703,18 @@ function every_frame(cur_timestamp: number) {
           no_collision = (cur_mouse_place.type !== "molecule") || !eqArrays(cur_mouse_place.molecule_address, mouse_state.source.molecule_address);
           break;
         case "vau_molecule":
-          drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), mouse_state.source.vau_molecule_address), "cyan");
+          drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), mouse_state.source.vau_molecule_address), "blue");
           no_collision = (cur_mouse_place.type !== "vau_molecule") || !eqArrays(cur_mouse_place.vau_molecule_address, mouse_state.source.vau_molecule_address);
           break;
+        case "vau_matcher":
+          drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, mouse_state.source.vau_matcher_address), "blue");
+          no_collision = (cur_mouse_place.type !== "vau_matcher") || !eqArrays(cur_mouse_place.vau_matcher_address, mouse_state.source.vau_matcher_address);
+          break;
         case "toolbar":
-          drawMoleculeHighlight(getGrandchildView(toolbar[mouse_state.source.toolbar_index].view, []), "cyan");
+          drawMoleculeHighlight(getGrandchildView(toolbar[mouse_state.source.toolbar_index].view, []), "blue");
           break;
         default:
-          break;
+          throw new Error("");
       }
 
       if (no_collision) {
@@ -679,8 +740,17 @@ function every_frame(cur_timestamp: number) {
               cur_vau.right = setAtAddress(cur_vau.right, cur_mouse_place.vau_molecule_address, mouse_state.value);
             }
             break;
-          default:
+          case "vau_matcher":
+            drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "Chartreuse");
+            ctx.globalAlpha = .5;
+            drawMatcher(mouse_state.value, getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address));
+            ctx.globalAlpha = 1;
+            if (input.mouse.wasReleased(MouseButton.Left)) {
+              cur_vau.left = setAtAddress(cur_vau.left, cur_mouse_place.vau_matcher_address, mouse_state.value);
+            }
             break;
+          default:
+            throw new Error("");
         }
       }
       if (input.mouse.wasReleased(MouseButton.Left)) {
@@ -689,7 +759,7 @@ function every_frame(cur_timestamp: number) {
       break;
     }
     default:
-      break;
+      throw new Error("");
   }
 
   requestAnimationFrame(every_frame);
