@@ -382,6 +382,7 @@ function getVauMoleculeView(view: VauView): MoleculeView {
 }
 
 function drawMatcherHighlight(view: VauView, color: string) {
+  ctx.beginPath();
   ctx.strokeStyle = color;
   moveTo(ctx, view.pos.addX(view.halfside * spike_perc));
   lineTo(ctx, view.pos.addY(-view.halfside));
