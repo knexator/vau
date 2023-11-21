@@ -352,7 +352,7 @@ function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: M
 
 function matcherAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: VauView): Address | null {
   const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
-  if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, -2, -(Math.abs(delta_pos.y) - 1) * spike_perc)) {
+  if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, -3 + (Math.abs(delta_pos.y) - 1) * spike_perc, -(Math.abs(delta_pos.y) - 1) * spike_perc)) {
     // are we selecting a subchild?
     if (data.type === "pair" && -delta_pos.x >= .5 - spike_perc / 2) {
       const is_left = delta_pos.y <= 0;
@@ -520,8 +520,11 @@ type MoleculePlace = { type: "none" } | {
   type: "vau_matcher",
   vau_matcher_address: Address
 } | {
-  type: "toolbar",
-  toolbar_index: number,
+  type: "toolbar_atoms",
+  atom_index: number,
+} | {
+  type: "toolbar_templates",
+  template_index: number,
 }
 
 let mouse_state: {
@@ -532,8 +535,12 @@ let mouse_state: {
   source: MoleculePlace,
 } = { type: "none" };
 
-const toolbar: { view: MoleculeView, value: Sexpr }[] = fromCount(10, k => {
+const toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = fromCount(11, k => {
   return { view: { pos: new Vec2(40 + 60 * k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
+});
+
+const toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = fromCount(7, k => {
+  return { view: { pos: new Vec2(100 + 95 * k, 100), halfside: 20 }, value: doAtom(`@${k}`), used: false };
 });
 
 function doPair(left: Sexpr, right: Sexpr): Pair {
@@ -622,7 +629,8 @@ function every_frame(cur_timestamp: number) {
 
   drawVau(cur_vau, base_vau_view);
 
-  toolbar.forEach(({ view, value }) => drawMolecule(value, view));
+  toolbar_atoms.forEach(({ view, value }) => drawMolecule(value, view));
+  toolbar_templates.forEach(({ view, value }) => drawMatcher(value, view));
 
   const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   let cur_mouse_place: MoleculePlace;
@@ -642,11 +650,16 @@ function every_frame(cur_timestamp: number) {
       cur_vau.left,
       base_vau_view
     );
-    const hovering_toolbar_index: number | null = findIndex(toolbar, ({ view, value }) => {
+    const hovering_atom_toolbar_index: number | null = findIndex(toolbar_atoms, ({ view, value }) => {
       return moleculeAdressFromScreenPosition(mouse_pos, value, view) !== null;
     });
-    if (hovering_toolbar_index !== null) {
-      cur_mouse_place = { type: "toolbar", toolbar_index: hovering_toolbar_index };
+    const hovering_template_toolbar_index: number | null = findIndex(toolbar_templates, ({ view, value, used }) => {
+      return !used && matcherAdressFromScreenPosition(mouse_pos, value, view) !== null;
+    });
+    if (hovering_atom_toolbar_index !== null) {
+      cur_mouse_place = { type: "toolbar_atoms", atom_index: hovering_atom_toolbar_index };
+    } else if (hovering_template_toolbar_index !== null) {
+      cur_mouse_place = { type: "toolbar_templates", template_index: hovering_template_toolbar_index };
     } else if (vau_molecule_mouse_path !== null) {
       cur_mouse_place = { type: "vau_molecule", vau_molecule_address: vau_molecule_mouse_path };
     } else if (vau_matcher_mouse_path !== null) {
@@ -685,10 +698,16 @@ function every_frame(cur_timestamp: number) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: getAtAddress(cur_vau.left, cur_mouse_place.vau_matcher_address) };
           }
           break;
-        case "toolbar":
-          drawMoleculeHighlight(getGrandchildView(toolbar[cur_mouse_place.toolbar_index].view, []), "cyan");
+        case "toolbar_atoms":
+          drawMoleculeHighlight(toolbar_atoms[cur_mouse_place.atom_index].view, "cyan");
           if (input.mouse.wasPressed(MouseButton.Left)) {
-            mouse_state = { type: "holding", source: cur_mouse_place, value: toolbar[cur_mouse_place.toolbar_index].value };
+            mouse_state = { type: "holding", source: cur_mouse_place, value: toolbar_atoms[cur_mouse_place.atom_index].value };
+          }
+          break;
+        case "toolbar_templates":
+          drawMatcherHighlight(toolbar_templates[cur_mouse_place.template_index].view, "cyan");
+          if (input.mouse.wasPressed(MouseButton.Left)) {
+            mouse_state = { type: "holding", source: cur_mouse_place, value: toolbar_templates[cur_mouse_place.template_index].value };
           }
           break;
         default:
@@ -711,16 +730,21 @@ function every_frame(cur_timestamp: number) {
           drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, mouse_state.source.vau_matcher_address), "blue");
           no_collision = (cur_mouse_place.type !== "vau_matcher") || !eqArrays(cur_mouse_place.vau_matcher_address, mouse_state.source.vau_matcher_address);
           break;
-        case "toolbar":
-          drawMoleculeHighlight(getGrandchildView(toolbar[mouse_state.source.toolbar_index].view, []), "blue");
+        case "toolbar_atoms":
+          drawMoleculeHighlight(getGrandchildView(toolbar_atoms[mouse_state.source.atom_index].view, []), "blue");
           break;
+        case "toolbar_templates":
+          drawMatcherHighlight(toolbar_templates[mouse_state.source.template_index].view, "blue");
+          break;
+        case "none":
         default:
           throw new Error("");
       }
 
       if (no_collision) {
         switch (cur_mouse_place.type) {
-          case "toolbar":
+          case "toolbar_templates":
+          case "toolbar_atoms":
           case "none":
             break;
           case "molecule":
