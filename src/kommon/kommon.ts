@@ -19,6 +19,12 @@ export function eqArrays<T>(a: T[], b: T[]) : boolean {
     return a.length === b.length && a.every((v, k) => v === b[k]);
 }
 
+export function findIndex<T>(arr: T[], predicate: (value: T, index?: number, obj?: T[]) => boolean): number | null {
+    let index = arr.findIndex(predicate);
+    if (index < 0) return null;
+    return index;
+}
+
 export function* pairwise<T>(arr: Iterable<T>): Generator<[T, T], void, void> {
     let iterator = arr[Symbol.iterator]();
     let a = iterator.next();

@@ -8,7 +8,7 @@ import { Grid2D } from "./kommon/grid2D";
 import { DoubledCoord, Hex, HexMap, Layout, OffsetCoord } from "./kommon/hex";
 import { Input, KeyCode, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
-import { eqArrays, fromCount, objectMap, zip2 } from "./kommon/kommon";
+import { eqArrays, findIndex, fromCount, objectMap, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 
@@ -453,6 +453,9 @@ let cur_molecule_view = {
   updateTarget: function (): void {
     let new_target = getGrandparentView(base_molecule_view, cur_molecule_address);
     this.setTarget(new_target);
+  },
+  get cur(): MoleculeView {
+    return this.anim.callback(this.anim.progress);
   }
 }
 
@@ -463,6 +466,18 @@ let mouse_state: {
   value: Sexpr,
   molecule_address: Address | null,
 } = { type: "none" };
+
+let toolbar: { view: MoleculeView, value: Sexpr }[] = fromCount(10, k => {
+  return { view: { pos: new Vec2(40 + 60*k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom('0'), doAtom('0')) : doAtom((k-1).toString()) }
+});
+
+function doPair(left: Sexpr, right: Sexpr): Pair {
+  return { type: "pair", left, right };
+}
+
+function doAtom(value: string): Atom {
+  return { type: "atom", value };
+}
 
 let last_timestamp = 0;
 // main loop; game logic lives here
@@ -544,38 +559,52 @@ function every_frame(cur_timestamp: number) {
     halfside: 200,
   })
 
-  let mouse_path = moleculeAdressFromScreenPosition(
-    new Vec2(input.mouse.clientX, input.mouse.clientY),
+  toolbar.forEach(({view, value}) => drawMolecule(value, view));
+
+  const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
+  let molecule_mouse_path = moleculeAdressFromScreenPosition(
+    mouse_pos,
     cur_base_molecule,
-    advanceAnim(cur_molecule_view.anim, 0),
+    cur_molecule_view.cur,
   );
-  if (mouse_path && input.mouse.wasPressed(MouseButton.Right)) {
+  let hovering_toolbar_index: number | null = findIndex(toolbar, ({view, value}) => {
+    return moleculeAdressFromScreenPosition(mouse_pos, value, view) !== null;
+  });
+  if (hovering_toolbar_index !== null) {
+    molecule_mouse_path = null;
+  }
+  if (molecule_mouse_path && input.mouse.wasPressed(MouseButton.Right)) {
     // TODO: better lerp
-    cur_molecule_address = mouse_path;
+    cur_molecule_address = molecule_mouse_path;
     cur_molecule_view.updateTarget();
   }
   switch (mouse_state.type) {
     case "none":
-      if (mouse_path !== null) {
-        drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path), "cyan");
+      if (molecule_mouse_path !== null) {
+        drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, molecule_mouse_path), "cyan");
         if (input.mouse.wasPressed(MouseButton.Left)) {
-          mouse_state = { type: "holding", molecule_address: mouse_path, value: getAtAddress(cur_base_molecule, mouse_path) };
+          mouse_state = { type: "holding", molecule_address: molecule_mouse_path, value: getAtAddress(cur_base_molecule, molecule_mouse_path) };
+        }
+      } else if (hovering_toolbar_index !== null) {
+        drawMoleculeHighlight(getGrandchildView(toolbar[hovering_toolbar_index].view, []), "cyan");
+        if (input.mouse.wasPressed(MouseButton.Left)) {
+          mouse_state = { type: "holding", molecule_address: null, value: toolbar[hovering_toolbar_index].value };
         }
       }
       break;
     case "holding":
       if (mouse_state.molecule_address !== null) {
-        drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_state.molecule_address), "blue");
+        drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, mouse_state.molecule_address), "blue");
       }
-      if (mouse_path !== null && (mouse_state.molecule_address === null || !eqArrays(mouse_path, mouse_state.molecule_address))) {
-        drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path), "Chartreuse");
+      if (molecule_mouse_path !== null && (mouse_state.molecule_address === null || !eqArrays(molecule_mouse_path, mouse_state.molecule_address))) {
+        drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, molecule_mouse_path), "Chartreuse");
         ctx.globalAlpha = .5;
-        drawMolecule(mouse_state.value, getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path));
+        drawMolecule(mouse_state.value, getGrandchildView(cur_molecule_view.cur, molecule_mouse_path));
         ctx.globalAlpha = 1;
       }
       if (input.mouse.wasReleased(MouseButton.Left)) {
-        if (mouse_path !== null) {
-          cur_base_molecule = setAtAddress(cur_base_molecule, mouse_path, mouse_state.value);
+        if (molecule_mouse_path !== null) {
+          cur_base_molecule = setAtAddress(cur_base_molecule, molecule_mouse_path, mouse_state.value);
         }
         mouse_state = { type: "none" };
       }
