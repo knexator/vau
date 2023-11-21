@@ -68,10 +68,10 @@ if (DEBUG) {
   // gui.hide();
 }
 
-function moveTo (ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
+function moveTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
   ctx.moveTo(x, y);
 }
-function lineTo (ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
+function lineTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
   ctx.lineTo(x, y);
 }
 
@@ -111,7 +111,7 @@ let cur_vau_index = 0;
 
 type Address = boolean[];
 
-function getAtAddress (molecule: Sexpr, address: Address): Sexpr {
+function getAtAddress(molecule: Sexpr, address: Address): Sexpr {
   let result = molecule;
   for (let k = 0; k < address.length; k++) {
     if (result.type === "atom") throw new Error(`cant access ${molecule} at ${address}`);
@@ -120,7 +120,7 @@ function getAtAddress (molecule: Sexpr, address: Address): Sexpr {
   return result;
 }
 
-function cloneSexpr (sexpr: Sexpr): Sexpr {
+function cloneSexpr(sexpr: Sexpr): Sexpr {
   if (sexpr.type === "atom") {
     return { type: "atom", value: sexpr.value };
   } else {
@@ -132,7 +132,7 @@ function cloneSexpr (sexpr: Sexpr): Sexpr {
   }
 }
 
-function setAtAddress (molecule: Sexpr, address: Address, value: Sexpr): Sexpr {
+function setAtAddress(molecule: Sexpr, address: Address, value: Sexpr): Sexpr {
   if (address.length === 0) return value;
   const result = cloneSexpr(molecule);
   let parent = result;
@@ -155,7 +155,7 @@ type Binding = {
   value: Sexpr,
 }
 // returns null if the template doesn't fit
-function generateBindings (molecule: Sexpr, template: Sexpr, address: Address = []): Binding[] | null {
+function generateBindings(molecule: Sexpr, template: Sexpr, address: Address = []): Binding[] | null {
   if (template.type === "atom") {
     if (template.value[0] === "@") {
       return [{ name: template.value, address: address, value: structuredClone(molecule) }];
@@ -179,7 +179,7 @@ function generateBindings (molecule: Sexpr, template: Sexpr, address: Address = 
   }
 }
 
-function applyBindings (template: Sexpr, bindings: Binding[]): Sexpr {
+function applyBindings(template: Sexpr, bindings: Binding[]): Sexpr {
   if (template.type === "atom") {
     if (template.value[0] === "@") {
       const matching_binding = bindings.find(({ name }) => name === template.value);
@@ -200,13 +200,13 @@ function applyBindings (template: Sexpr, bindings: Binding[]): Sexpr {
   }
 }
 
-function afterVau (molecule: Sexpr, vau: Pair): Sexpr | null {
+function afterVau(molecule: Sexpr, vau: Pair): Sexpr | null {
   const bindings = generateBindings(molecule, vau.left);
   if (bindings === null) return null;
   return applyBindings(vau.right, bindings);
 }
 
-function isValidAddress (molecule: Sexpr, address: Address): boolean {
+function isValidAddress(molecule: Sexpr, address: Address): boolean {
   try {
     getAtAddress(molecule, address);
     return true;
@@ -230,7 +230,7 @@ const colorFromAtom: (atom: string) => Color = (() => {
 })();
 
 type MoleculeView = { pos: Vec2, halfside: number };
-function drawMolecule (data: Sexpr, view: MoleculeView) {
+function drawMolecule(data: Sexpr, view: MoleculeView) {
   if (data.type === "atom") {
     if (data.value[0] === "@") {
       ctx.beginPath();
@@ -279,7 +279,7 @@ function drawMolecule (data: Sexpr, view: MoleculeView) {
   }
 }
 
-function drawMoleculeHighlight (view: MoleculeView, color: string) {
+function drawMoleculeHighlight(view: MoleculeView, color: string) {
   ctx.beginPath();
   ctx.strokeStyle = color;
   moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
@@ -293,7 +293,7 @@ function drawMoleculeHighlight (view: MoleculeView, color: string) {
 }
 
 // Given that the child at the given path has the given view, get the grandparents view
-function getGrandparentView (grandchild: MoleculeView, path_to_child: Address): MoleculeView {
+function getGrandparentView(grandchild: MoleculeView, path_to_child: Address): MoleculeView {
   let result = grandchild;
   for (let k = path_to_child.length - 1; k >= 0; k--) {
     result = getParentView(result, path_to_child[k]);
@@ -301,14 +301,14 @@ function getGrandparentView (grandchild: MoleculeView, path_to_child: Address): 
   return result;
 }
 
-function getParentView (child: MoleculeView, is_left: boolean): MoleculeView {
+function getParentView(child: MoleculeView, is_left: boolean): MoleculeView {
   return {
     pos: child.pos.add(new Vec2(-child.halfside, (is_left ? 1 : -1) * child.halfside)),
     halfside: child.halfside * 2,
   };
 }
 
-function getChildView (parent: MoleculeView, is_left: boolean): MoleculeView {
+function getChildView(parent: MoleculeView, is_left: boolean): MoleculeView {
   return {
     pos: parent.pos.add(new Vec2(parent.halfside / 2, (is_left ? -1 : 1) * parent.halfside / 2)),
     halfside: parent.halfside / 2,
@@ -316,7 +316,7 @@ function getChildView (parent: MoleculeView, is_left: boolean): MoleculeView {
 }
 
 // Given that the grandparent has the given view, find the view at the given address
-function getGrandchildView (grandparent: MoleculeView, path_to_child: Address): MoleculeView {
+function getGrandchildView(grandparent: MoleculeView, path_to_child: Address): MoleculeView {
   let result = grandparent;
   for (let k = 0; k < path_to_child.length; k++) {
     result = getChildView(result, path_to_child[k]);
@@ -324,7 +324,7 @@ function getGrandchildView (grandparent: MoleculeView, path_to_child: Address): 
   return result;
 }
 
-function moleculeAdressFromScreenPosition (screen_pos: Vec2, data: Sexpr, view: MoleculeView): Address | null {
+function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: MoleculeView): Address | null {
   const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
   if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, (Math.abs(delta_pos.y) - 1) * spike_perc, 2)) {
     // are we selecting a subchild?
@@ -343,19 +343,19 @@ function moleculeAdressFromScreenPosition (screen_pos: Vec2, data: Sexpr, view: 
 }
 
 type VauView = { pos: Vec2, halfside: number };
-function drawVau (data: Pair, view: VauView) {
+function drawVau(data: Pair, view: VauView) {
   drawVau_matcher(data.left, view);
   drawMolecule(data.right, getVauMoleculeView(view));
 }
 
-function getVauMoleculeView (view: VauView): MoleculeView {
+function getVauMoleculeView(view: VauView): MoleculeView {
   return {
     halfside: view.halfside,
     pos: view.pos.add(new Vec2(spike_perc * view.halfside / 2, view.halfside / 2)),
   };
 }
 
-function drawVau_matcher (data: Sexpr, view: VauView) {
+function drawVau_matcher(data: Sexpr, view: VauView) {
   if (data.type === "atom") {
     if (data.value[0] === "@") {
       const halfside = view.halfside;
@@ -408,7 +408,7 @@ function drawVau_matcher (data: Sexpr, view: VauView) {
   // drawVau_matcher(data.left, view);
 }
 
-function getVauMatcherChildView (parent: VauView, is_left: boolean): VauView {
+function getVauMatcherChildView(parent: VauView, is_left: boolean): VauView {
   return {
     pos: parent.pos.add(new Vec2(-parent.halfside, (is_left ? -1 : 1) * parent.halfside / 2)),
     halfside: parent.halfside / 2,
@@ -417,36 +417,36 @@ function getVauMatcherChildView (parent: VauView, is_left: boolean): VauView {
 
 type Anim<T> = { progress: number, duration: number, callback: (t: number) => T }
 
-function advanceAnim<T> (anim: Anim<T>, dt: number): T {
+function advanceAnim<T>(anim: Anim<T>, dt: number): T {
   anim.progress = approach(anim.progress, 1, dt / anim.duration);
   return anim.callback(anim.progress);
 }
 
-function makeConstantAnim<T> (value: T): Anim<T> {
+function makeConstantAnim<T>(value: T): Anim<T> {
   return {
     progress: 1,
     duration: 1,
-    callback (_t) {
+    callback(_t) {
       return value;
     },
   }
 }
 
-function makeLerpAnim<T> (a: T, b: T, duration: number, lerp: (a: T, b: T, t: number) => T): Anim<T> {
+function makeLerpAnim<T>(a: T, b: T, duration: number, lerp: (a: T, b: T, t: number) => T): Anim<T> {
   return {
     progress: 0,
     duration: duration,
-    callback (t) {
+    callback(t) {
       return lerp(a, b, t);
     },
   }
 }
 
-function getFinalValue<T> (anim: Anim<T>): T {
+function getFinalValue<T>(anim: Anim<T>): T {
   return anim.callback(1);
 }
 
-function lerpMoleculeViews (a: MoleculeView, b: MoleculeView, t: number): MoleculeView {
+function lerpMoleculeViews(a: MoleculeView, b: MoleculeView, t: number): MoleculeView {
   return {
     pos: Vec2.lerp(a.pos, b.pos, t),
     halfside: lerp(a.halfside, b.halfside, t),
@@ -464,7 +464,7 @@ const cur_molecule_view = {
     let new_target = getGrandparentView(base_molecule_view, cur_molecule_address);
     this.setTarget(new_target);
   },
-  get cur (): MoleculeView {
+  get cur(): MoleculeView {
     return this.anim.callback(this.anim.progress);
   }
 }
@@ -474,24 +474,33 @@ let mouse_state: {
 } | {
   type: "holding",
   value: Sexpr,
-  molecule_address: Address | null,
+  source: {
+    type: "molecule",
+    molecule_address: Address
+  } | {
+    type: "vau_molecule",
+    vau_molecule_address: Address
+  } | {
+    type: "toolbar",
+    toolbar_index: number,
+  }
 } = { type: "none" };
 
 const toolbar: { view: MoleculeView, value: Sexpr }[] = fromCount(10, k => {
   return { view: { pos: new Vec2(40 + 60 * k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
 });
 
-function doPair (left: Sexpr, right: Sexpr): Pair {
+function doPair(left: Sexpr, right: Sexpr): Pair {
   return { type: "pair", left, right };
 }
 
-function doAtom (value: string): Atom {
+function doAtom(value: string): Atom {
   return { type: "atom", value };
 }
 
 let last_timestamp = 0;
 // main loop; game logic lives here
-function every_frame (cur_timestamp: number) {
+function every_frame(cur_timestamp: number) {
   // in seconds
   const delta_time = (cur_timestamp - last_timestamp) / 1000;
   last_timestamp = cur_timestamp;
@@ -597,34 +606,49 @@ function every_frame (cur_timestamp: number) {
       if (molecule_mouse_path !== null) {
         drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, molecule_mouse_path), "cyan");
         if (input.mouse.wasPressed(MouseButton.Left)) {
-          mouse_state = { type: "holding", molecule_address: molecule_mouse_path, value: getAtAddress(cur_base_molecule, molecule_mouse_path) };
+          mouse_state = { type: "holding", source: { type: "molecule", molecule_address: molecule_mouse_path }, value: getAtAddress(cur_base_molecule, molecule_mouse_path) };
         }
       } else if (vau_molecule_mouse_path !== null) {
         drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), vau_molecule_mouse_path), "cyan");
+        if (input.mouse.wasPressed(MouseButton.Left)) {
+          mouse_state = { type: "holding", source: { type: "vau_molecule", vau_molecule_address: vau_molecule_mouse_path }, value: getAtAddress(cur_vau.right, vau_molecule_mouse_path) };
+        }
       } else if (hovering_toolbar_index !== null) {
         drawMoleculeHighlight(getGrandchildView(toolbar[hovering_toolbar_index].view, []), "cyan");
         if (input.mouse.wasPressed(MouseButton.Left)) {
-          mouse_state = { type: "holding", molecule_address: null, value: toolbar[hovering_toolbar_index].value };
+          mouse_state = { type: "holding", source: { type: "toolbar", toolbar_index: hovering_toolbar_index }, value: toolbar[hovering_toolbar_index].value };
         }
       }
       break;
-    case "holding":
-      if (mouse_state.molecule_address !== null) {
-        drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, mouse_state.molecule_address), "blue");
+    case "holding": {
+      let no_collision = true;
+      switch (mouse_state.source.type) {
+        case "molecule":
+          drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, mouse_state.source.molecule_address), "blue");
+          no_collision = (molecule_mouse_path === null) || !eqArrays(molecule_mouse_path, mouse_state.source.molecule_address);
+          break;
+        case "vau_molecule":
+          drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), mouse_state.source.vau_molecule_address), "cyan");
+          // no_collision = ... // TODO
+          break;
+        case "toolbar":
+          drawMoleculeHighlight(getGrandchildView(toolbar[mouse_state.source.toolbar_index].view, []), "cyan");
+          break;
+        default:
+          break;
       }
-      if (molecule_mouse_path !== null && (mouse_state.molecule_address === null || !eqArrays(molecule_mouse_path, mouse_state.molecule_address))) {
+      if (no_collision && molecule_mouse_path !== null) {
         drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, molecule_mouse_path), "Chartreuse");
         ctx.globalAlpha = .5;
         drawMolecule(mouse_state.value, getGrandchildView(cur_molecule_view.cur, molecule_mouse_path));
         ctx.globalAlpha = 1;
-      }
-      if (input.mouse.wasReleased(MouseButton.Left)) {
-        if (molecule_mouse_path !== null) {
+        if (input.mouse.wasReleased(MouseButton.Left)) {
           cur_base_molecule = setAtAddress(cur_base_molecule, molecule_mouse_path, mouse_state.value);
+          mouse_state = { type: "none" };
         }
-        mouse_state = { type: "none" };
       }
       break;
+    }
     default:
       break;
   }
@@ -634,7 +658,7 @@ function every_frame (cur_timestamp: number) {
 
 // library stuff /////////////////////////
 
-function single<T> (arr: T[]): T {
+function single<T>(arr: T[]): T {
   if (arr.length === 0) {
     throw new Error("the array was empty");
   } else if (arr.length > 1) {
@@ -644,7 +668,7 @@ function single<T> (arr: T[]): T {
   }
 }
 
-function at<T> (arr: T[], index: number): T {
+function at<T>(arr: T[], index: number): T {
   if (arr.length === 0) throw new Error("can't call 'at' with empty array");
   return arr[mod(index, arr.length)];
 }
