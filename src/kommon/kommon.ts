@@ -15,6 +15,10 @@ export function fromRange<T>(lo: number, hi: number, callback: (index: number) =
     return result;
 }
 
+export function eqArrays<T>(a: T[], b: T[]) : boolean {
+    return a.length === b.length && a.every((v, k) => v === b[k]);
+}
+
 export function* pairwise<T>(arr: Iterable<T>): Generator<[T, T], void, void> {
     let iterator = arr[Symbol.iterator]();
     let a = iterator.next();

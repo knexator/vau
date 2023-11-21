@@ -8,7 +8,7 @@ import { Grid2D } from "./kommon/grid2D";
 import { DoubledCoord, Hex, HexMap, Layout, OffsetCoord } from "./kommon/hex";
 import { Input, KeyCode, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
-import { fromCount, objectMap, zip2 } from "./kommon/kommon";
+import { eqArrays, fromCount, objectMap, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 
@@ -268,9 +268,9 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
   }
 }
 
-function drawMoleculeHighlight(view: MoleculeView) {
+function drawMoleculeHighlight(view: MoleculeView, color: string) {
   ctx.beginPath();
-  ctx.strokeStyle = "cyan";
+  ctx.strokeStyle = color;
   moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
   lineTo(ctx, view.pos.addY(-view.halfside));
   lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
@@ -451,6 +451,14 @@ let cur_molecule_view = {
   }
 }
 
+let mouse_state: {
+  type: 'none'
+} | {
+  type: 'holding',
+  value: Sexpr,
+  molecule_address: Address | null,
+} = { type: "none" };
+
 let last_timestamp = 0;
 // main loop; game logic lives here
 function every_frame(cur_timestamp: number) {
@@ -536,13 +544,39 @@ function every_frame(cur_timestamp: number) {
     cur_base_molecule,
     advanceAnim(cur_molecule_view.anim, 0),
   );
-  if (mouse_path !== null) {
-    drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path));
-    if (input.mouse.wasPressed(MouseButton.Right)) {
-      // TODO: better lerp
-      cur_molecule_address = mouse_path;
-      cur_molecule_view.updateTarget();
-    }
+  if (mouse_path && input.mouse.wasPressed(MouseButton.Right)) {
+    // TODO: better lerp
+    cur_molecule_address = mouse_path;
+    cur_molecule_view.updateTarget();
+  }
+  switch (mouse_state.type) {
+    case "none":
+      if (mouse_path !== null) {
+        drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path), "cyan");
+        if (input.mouse.wasPressed(MouseButton.Left)) {
+          mouse_state = { type: "holding", molecule_address: mouse_path, value: getAtAddress(cur_base_molecule, mouse_path)! };
+        }
+      }
+      break;
+    case "holding":
+      if (mouse_state.molecule_address !== null) {
+        drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_state.molecule_address), "blue");
+      }
+      if (mouse_path !== null && (mouse_state.molecule_address === null || !eqArrays(mouse_path, mouse_state.molecule_address))) {
+        drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path), "Chartreuse");
+        ctx.globalAlpha = .5;
+        drawMolecule(mouse_state.value, getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path));
+        ctx.globalAlpha = 1;
+      }
+      if (input.mouse.wasReleased(MouseButton.Left)) {
+        if (mouse_path !== null) {
+          cur_base_molecule = setAtAddress(cur_base_molecule, mouse_path, mouse_state.value);
+        }
+        mouse_state = { type: "none" };
+      }
+      break;
+    default:
+      break;
   }
 
   requestAnimationFrame(every_frame);
