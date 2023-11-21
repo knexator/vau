@@ -104,10 +104,10 @@ let cur_vau_index = 0;
 
 type Address = boolean[];
 
-function getAtAddress(molecule: Sexpr, address: Address): Sexpr | null {
+function getAtAddress(molecule: Sexpr, address: Address): Sexpr {
   let result = molecule;
   for (let k = 0; k < address.length; k++) {
-    if (result.type === "atom") return null;
+    if (result.type === "atom") throw new Error(`cant access ${molecule} at ${address}`);
     result = address[k] ? result.left : result.right;
   }
   return result;
@@ -201,7 +201,12 @@ function afterVau(molecule: Sexpr, vau: Pair): Sexpr | null {
 
 
 function isValidAddress(molecule: Sexpr, address: Address): boolean {
-  return getAtAddress(molecule, address) !== null;
+  try {
+    getAtAddress(molecule, address);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 const colorFromAtom: (atom: string) => Color = (() => {
@@ -522,7 +527,7 @@ function every_frame(cur_timestamp: number) {
 
 
   if (input.keyboard.wasPressed(KeyCode.Space)) {
-    let new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address)!, cur_vaus[cur_vau_index]);
+    let new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[cur_vau_index]);
     if (new_molecule !== null) {
       cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
     }
@@ -554,7 +559,7 @@ function every_frame(cur_timestamp: number) {
       if (mouse_path !== null) {
         drawMoleculeHighlight(getGrandchildView(advanceAnim(cur_molecule_view.anim, 0), mouse_path), "cyan");
         if (input.mouse.wasPressed(MouseButton.Left)) {
-          mouse_state = { type: "holding", molecule_address: mouse_path, value: getAtAddress(cur_base_molecule, mouse_path)! };
+          mouse_state = { type: "holding", molecule_address: mouse_path, value: getAtAddress(cur_base_molecule, mouse_path) };
         }
       }
       break;
