@@ -73,24 +73,24 @@ function setDefaultType(Ctor: typeof Float32Array | typeof Array) {
  */
 function multiply(a: Matrix3, b: Matrix3, dst?: Matrix3) {
   dst = dst || new MatType(9)
-  var a00 = a[0 * 3 + 0]
-  var a01 = a[0 * 3 + 1]
-  var a02 = a[0 * 3 + 2]
-  var a10 = a[1 * 3 + 0]
-  var a11 = a[1 * 3 + 1]
-  var a12 = a[1 * 3 + 2]
-  var a20 = a[2 * 3 + 0]
-  var a21 = a[2 * 3 + 1]
-  var a22 = a[2 * 3 + 2]
-  var b00 = b[0 * 3 + 0]
-  var b01 = b[0 * 3 + 1]
-  var b02 = b[0 * 3 + 2]
-  var b10 = b[1 * 3 + 0]
-  var b11 = b[1 * 3 + 1]
-  var b12 = b[1 * 3 + 2]
-  var b20 = b[2 * 3 + 0]
-  var b21 = b[2 * 3 + 1]
-  var b22 = b[2 * 3 + 2]
+  let a00 = a[0 * 3 + 0]
+  let a01 = a[0 * 3 + 1]
+  let a02 = a[0 * 3 + 2]
+  let a10 = a[1 * 3 + 0]
+  let a11 = a[1 * 3 + 1]
+  let a12 = a[1 * 3 + 2]
+  let a20 = a[2 * 3 + 0]
+  let a21 = a[2 * 3 + 1]
+  let a22 = a[2 * 3 + 2]
+  let b00 = b[0 * 3 + 0]
+  let b01 = b[0 * 3 + 1]
+  let b02 = b[0 * 3 + 2]
+  let b10 = b[1 * 3 + 0]
+  let b11 = b[1 * 3 + 1]
+  let b12 = b[1 * 3 + 2]
+  let b20 = b[2 * 3 + 0]
+  let b21 = b[2 * 3 + 1]
+  let b22 = b[2 * 3 + 2]
 
   dst[0] = b00 * a00 + b01 * a10 + b02 * a20
   dst[1] = b00 * a01 + b01 * a11 + b02 * a21
@@ -208,8 +208,8 @@ function translate(m: Matrix3, tx: number, ty: number, dst?: Matrix3): Matrix3 {
  * @memberOf module:webgl-2d-math
  */
 function rotation(angleInRadians: number, dst?: Matrix3): Matrix3 {
-  var c = Math.cos(angleInRadians)
-  var s = Math.sin(angleInRadians)
+  let c = Math.cos(angleInRadians)
+  let s = Math.sin(angleInRadians)
 
   dst = dst || new MatType(9)
 
@@ -280,13 +280,13 @@ function dot(x1: number, y1: number, x2: number, y2: number) {
 }
 
 function distance(x1: number, y1: number, x2: number, y2: number): number {
-  var dx = x1 - x2
-  var dy = y1 - y2
+  let dx = x1 - x2
+  let dy = y1 - y2
   return Math.sqrt(dx * dx + dy * dy)
 }
 
 function normalize(x: number, y: number): Vector2 {
-  var l = distance(0, 0, x, y)
+  let l = distance(0, 0, x, y)
   if (l > 0.00001) {
     return [x / l, y / l]
   } else {
@@ -298,7 +298,7 @@ function normalize(x: number, y: number): Vector2 {
 // n = normal
 function reflect(ix: number, iy: number, nx: number, ny: number): Vector2 {
   // I - 2.0 * dot(N, I) * N.
-  var d = dot(nx, ny, ix, iy)
+  let d = dot(nx, ny, ix, iy)
   return [ix - 2 * d * nx, iy - 2 * d * ny]
 }
 
@@ -311,9 +311,9 @@ function degToRad(d: number) {
 }
 
 function transformPoint(m: Matrix3, v: Vector2): Vector2 {
-  var v0 = v[0]
-  var v1 = v[1]
-  var d = v0 * m[0 * 3 + 2] + v1 * m[1 * 3 + 2] + m[2 * 3 + 2]
+  let v0 = v[0]
+  let v1 = v[1]
+  let d = v0 * m[0 * 3 + 2] + v1 * m[1 * 3 + 2] + m[2 * 3 + 2]
   return [
     (v0 * m[0 * 3 + 0] + v1 * m[1 * 3 + 0] + m[2 * 3 + 0]) / d,
     (v0 * m[0 * 3 + 1] + v1 * m[1 * 3 + 1] + m[2 * 3 + 1]) / d

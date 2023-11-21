@@ -70,12 +70,12 @@ export class Hex {
 
 
     public round(): Hex {
-        var qi: number = Math.round(this.q);
-        var ri: number = Math.round(this.r);
-        var si: number = Math.round(this.s);
-        var q_diff: number = Math.abs(qi - this.q);
-        var r_diff: number = Math.abs(ri - this.r);
-        var s_diff: number = Math.abs(si - this.s);
+        let qi: number = Math.round(this.q);
+        let ri: number = Math.round(this.r);
+        let si: number = Math.round(this.s);
+        let q_diff: number = Math.abs(qi - this.q);
+        let r_diff: number = Math.abs(ri - this.r);
+        let s_diff: number = Math.abs(si - this.s);
         if (q_diff > r_diff && q_diff > s_diff) {
             qi = -ri - si;
         }
@@ -96,12 +96,12 @@ export class Hex {
 
 
     public linedraw(b: Hex): Hex[] {
-        var N: number = this.distance(b);
-        var a_nudge: Hex = new Hex(this.q + 1e-06, this.r + 1e-06, this.s - 2e-06);
-        var b_nudge: Hex = new Hex(b.q + 1e-06, b.r + 1e-06, b.s - 2e-06);
-        var results: Hex[] = [];
-        var step: number = 1.0 / Math.max(N, 1);
-        for (var i = 0; i <= N; i++) {
+        let N: number = this.distance(b);
+        let a_nudge: Hex = new Hex(this.q + 1e-06, this.r + 1e-06, this.s - 2e-06);
+        let b_nudge: Hex = new Hex(b.q + 1e-06, b.r + 1e-06, b.s - 2e-06);
+        let results: Hex[] = [];
+        let step: number = 1.0 / Math.max(N, 1);
+        for (let i = 0; i <= N; i++) {
             results.push(a_nudge.lerp(b_nudge, step * i).round());
         }
         return results;
@@ -125,8 +125,8 @@ export class OffsetCoord {
     public static ODD: number = -1;
 
     public static qoffsetFromCube(offset: number, h: Hex): OffsetCoord {
-        var col: number = h.q;
-        var row: number = h.r + (h.q + offset * (h.q & 1)) / 2;
+        let col: number = h.q;
+        let row: number = h.r + (h.q + offset * (h.q & 1)) / 2;
         if (offset !== OffsetCoord.EVEN && offset !== OffsetCoord.ODD) {
             throw "offset must be EVEN (+1) or ODD (-1)";
         }
@@ -135,9 +135,9 @@ export class OffsetCoord {
 
 
     public static qoffsetToCube(offset: number, h: OffsetCoord): Hex {
-        var q: number = h.col;
-        var r: number = h.row - (h.col + offset * (h.col & 1)) / 2;
-        var s: number = -q - r;
+        let q: number = h.col;
+        let r: number = h.row - (h.col + offset * (h.col & 1)) / 2;
+        let s: number = -q - r;
         if (offset !== OffsetCoord.EVEN && offset !== OffsetCoord.ODD) {
             throw "offset must be EVEN (+1) or ODD (-1)";
         }
@@ -146,8 +146,8 @@ export class OffsetCoord {
 
 
     public static roffsetFromCube(offset: number, h: Hex): OffsetCoord {
-        var col: number = h.q + (h.r + offset * (h.r & 1)) / 2;
-        var row: number = h.r;
+        let col: number = h.q + (h.r + offset * (h.r & 1)) / 2;
+        let row: number = h.r;
         if (offset !== OffsetCoord.EVEN && offset !== OffsetCoord.ODD) {
             throw "offset must be EVEN (+1) or ODD (-1)";
         }
@@ -156,9 +156,9 @@ export class OffsetCoord {
 
 
     public static roffsetToCube(offset: number, h: OffsetCoord): Hex {
-        var q: number = h.col - (h.row + offset * (h.row & 1)) / 2;
-        var r: number = h.row;
-        var s: number = -q - r;
+        let q: number = h.col - (h.row + offset * (h.row & 1)) / 2;
+        let r: number = h.row;
+        let s: number = -q - r;
         if (offset !== OffsetCoord.EVEN && offset !== OffsetCoord.ODD) {
             throw "offset must be EVEN (+1) or ODD (-1)";
         }
@@ -171,31 +171,31 @@ export class DoubledCoord {
     constructor(public col: number, public row: number) { }
 
     public static qdoubledFromCube(h: Hex): DoubledCoord {
-        var col: number = h.q;
-        var row: number = 2 * h.r + h.q;
+        let col: number = h.q;
+        let row: number = 2 * h.r + h.q;
         return new DoubledCoord(col, row);
     }
 
 
     public qdoubledToCube(): Hex {
-        var q: number = this.col;
-        var r: number = (this.row - this.col) / 2;
-        var s: number = -q - r;
+        let q: number = this.col;
+        let r: number = (this.row - this.col) / 2;
+        let s: number = -q - r;
         return new Hex(q, r, s);
     }
 
 
     public static rdoubledFromCube(h: Hex): DoubledCoord {
-        var col: number = 2 * h.q + h.r;
-        var row: number = h.r;
+        let col: number = 2 * h.q + h.r;
+        let row: number = h.r;
         return new DoubledCoord(col, row);
     }
 
 
     public rdoubledToCube(): Hex {
-        var q: number = (this.col - this.row) / 2;
-        var r: number = this.row;
-        var s: number = -q - r;
+        let q: number = (this.col - this.row) / 2;
+        let r: number = this.row;
+        let s: number = -q - r;
         return new Hex(q, r, s);
     }
 
@@ -211,46 +211,46 @@ export class Layout {
     public static flat: Orientation = new Orientation(3.0 / 2.0, 0.0, Math.sqrt(3.0) / 2.0, Math.sqrt(3.0), 2.0 / 3.0, 0.0, -1.0 / 3.0, Math.sqrt(3.0) / 3.0, 0.0);
 
     public static pointPixelOffset(h: Hex, size: number, origin: Point): Point {
-        var M: Orientation = Layout.pointy;
-        var x: number = (M.f0 * h.q + M.f1 * h.r) * size;
-        var y: number = (M.f2 * h.q + M.f3 * h.r) * size;
+        let M: Orientation = Layout.pointy;
+        let x: number = (M.f0 * h.q + M.f1 * h.r) * size;
+        let y: number = (M.f2 * h.q + M.f3 * h.r) * size;
         return new Point(x + origin.x, y + origin.y);
     }
 
     public hexToPixel(h: Hex): Point {
-        var M: Orientation = this.orientation;
-        var size: Point = this.size;
-        var origin: Point = this.origin;
-        var x: number = (M.f0 * h.q + M.f1 * h.r) * size.x;
-        var y: number = (M.f2 * h.q + M.f3 * h.r) * size.y;
+        let M: Orientation = this.orientation;
+        let size: Point = this.size;
+        let origin: Point = this.origin;
+        let x: number = (M.f0 * h.q + M.f1 * h.r) * size.x;
+        let y: number = (M.f2 * h.q + M.f3 * h.r) * size.y;
         return new Point(x + origin.x, y + origin.y);
     }
 
 
     public pixelToHex(p: Point): Hex {
-        var M: Orientation = this.orientation;
-        var size: Point = this.size;
-        var origin: Point = this.origin;
-        var pt: Point = new Point((p.x - origin.x) / size.x, (p.y - origin.y) / size.y);
-        var q: number = M.b0 * pt.x + M.b1 * pt.y;
-        var r: number = M.b2 * pt.x + M.b3 * pt.y;
+        let M: Orientation = this.orientation;
+        let size: Point = this.size;
+        let origin: Point = this.origin;
+        let pt: Point = new Point((p.x - origin.x) / size.x, (p.y - origin.y) / size.y);
+        let q: number = M.b0 * pt.x + M.b1 * pt.y;
+        let r: number = M.b2 * pt.x + M.b3 * pt.y;
         return new Hex(q, r, -q - r);
     }
 
 
     public hexCornerOffset(corner: number): Point {
-        var M: Orientation = this.orientation;
-        var size: Point = this.size;
-        var angle: number = 2.0 * Math.PI * (M.start_angle - corner) / 6.0;
+        let M: Orientation = this.orientation;
+        let size: Point = this.size;
+        let angle: number = 2.0 * Math.PI * (M.start_angle - corner) / 6.0;
         return new Point(size.x * Math.cos(angle), size.y * Math.sin(angle));
     }
 
 
     public polygonCorners(h: Hex): Point[] {
-        var corners: Point[] = [];
-        var center: Point = this.hexToPixel(h);
-        for (var i = 0; i < 6; i++) {
-            var offset: Point = this.hexCornerOffset(i);
+        let corners: Point[] = [];
+        let center: Point = this.hexToPixel(h);
+        for (let i = 0; i < 6; i++) {
+            let offset: Point = this.hexCornerOffset(i);
             corners.push(new Point(center.x + offset.x, center.y + offset.y));
         }
         return corners;
@@ -329,7 +329,7 @@ class Tests {
 
     public static equalHexArray(name: string, a: Hex[], b: Hex[]): void {
         Tests.equalInt(name, a.length, b.length);
-        for (var i = 0; i < a.length; i++) {
+        for (let i = 0; i < a.length; i++) {
             Tests.equalHex(name, a[i], b[i]);
         }
     }
@@ -372,9 +372,9 @@ class Tests {
 
 
     public static testHexRound(): void {
-        var a: Hex = new Hex(0.0, 0.0, 0.0);
-        var b: Hex = new Hex(1.0, -1.0, 0.0);
-        var c: Hex = new Hex(0.0, -1.0, 1.0);
+        let a: Hex = new Hex(0.0, 0.0, 0.0);
+        let b: Hex = new Hex(1.0, -1.0, 0.0);
+        let c: Hex = new Hex(0.0, -1.0, 1.0);
         Tests.equalHex("hex_round 1", new Hex(5, -10, 5), new Hex(0.0, 0.0, 0.0).lerp(new Hex(10.0, -20.0, 10.0), 0.5).round());
         Tests.equalHex("hex_round 2", a.round(), a.lerp(b, 0.499).round());
         Tests.equalHex("hex_round 3", b.round(), a.lerp(b, 0.501).round());
@@ -389,17 +389,17 @@ class Tests {
 
 
     public static testLayout(): void {
-        var h: Hex = new Hex(3, 4, -7);
-        var flat: Layout = new Layout(Layout.flat, new Point(10.0, 15.0), new Point(35.0, 71.0));
+        let h: Hex = new Hex(3, 4, -7);
+        let flat: Layout = new Layout(Layout.flat, new Point(10.0, 15.0), new Point(35.0, 71.0));
         Tests.equalHex("layout", h, flat.pixelToHex(flat.hexToPixel(h)).round());
-        var pointy: Layout = new Layout(Layout.pointy, new Point(10.0, 15.0), new Point(35.0, 71.0));
+        let pointy: Layout = new Layout(Layout.pointy, new Point(10.0, 15.0), new Point(35.0, 71.0));
         Tests.equalHex("layout", h, pointy.pixelToHex(pointy.hexToPixel(h)).round());
     }
 
 
     public static testOffsetRoundtrip(): void {
-        var a: Hex = new Hex(3, 4, -7);
-        var b: OffsetCoord = new OffsetCoord(1, -3);
+        let a: Hex = new Hex(3, 4, -7);
+        let b: OffsetCoord = new OffsetCoord(1, -3);
         Tests.equalHex("conversion_roundtrip even-q", a, OffsetCoord.qoffsetToCube(OffsetCoord.EVEN, OffsetCoord.qoffsetFromCube(OffsetCoord.EVEN, a)));
         Tests.equalOffsetcoord("conversion_roundtrip even-q", b, OffsetCoord.qoffsetFromCube(OffsetCoord.EVEN, OffsetCoord.qoffsetToCube(OffsetCoord.EVEN, b)));
         Tests.equalHex("conversion_roundtrip odd-q", a, OffsetCoord.qoffsetToCube(OffsetCoord.ODD, OffsetCoord.qoffsetFromCube(OffsetCoord.ODD, a)));
@@ -424,8 +424,8 @@ class Tests {
 
 
     public static testDoubledRoundtrip(): void {
-        var a: Hex = new Hex(3, 4, -7);
-        var b: DoubledCoord = new DoubledCoord(1, -3);
+        let a: Hex = new Hex(3, 4, -7);
+        let b: DoubledCoord = new DoubledCoord(1, -3);
         Tests.equalHex("conversion_roundtrip doubled-q", a, DoubledCoord.qdoubledFromCube(a).qdoubledToCube());
         Tests.equalDoubledcoord("conversion_roundtrip doubled-q", b, DoubledCoord.qdoubledFromCube(b.qdoubledToCube()));
         Tests.equalHex("conversion_roundtrip doubled-r", a, DoubledCoord.rdoubledFromCube(a).rdoubledToCube());

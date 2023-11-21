@@ -75,7 +75,7 @@ export function remap(value: number, old_a: number, old_b: number, new_a: number
 export function smoothstep(toZero: number, toOne: number, value: number) {
     let x = Math.max(0, Math.min(1, (value - toZero) / (toOne - toZero)));
     return x * x * (3 - 2 * x);
-};
+}
 
 export function clamp(value: number, min_inclusive: number, max_inclusive: number): number {
     return Math.max(min_inclusive, Math.min(max_inclusive, value));
