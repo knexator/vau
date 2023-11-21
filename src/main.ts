@@ -85,14 +85,23 @@ let cur_base_molecule = parseSexpr(`(+  (1 1 1) . (+ (1 1) . (1)))`);
 let cur_molecule_address = [] as Address;
 const base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
-  halfside: 200,
+  halfside: 150,
 }
+const base_vau_view = {
+  pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
+  halfside: 150,
+};
 
 const cur_vaus: Pair[] = [
   parseSexpr(`(
     (+ . ((@h . @t) . @b))
     .
     (+ . (@t . (@h . @b)))
+  )`) as Pair,
+  parseSexpr(`(
+    (@a . (nil . @a))
+    .
+    @a
   )`) as Pair,
   parseSexpr(`(
     (+ . (nil . @a))
@@ -339,10 +348,14 @@ function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: M
 type VauView = { pos: Vec2, halfside: number };
 function drawVau(data: Pair, view: VauView) {
   drawVau_matcher(data.left, view);
-  drawMolecule(data.right, {
+  drawMolecule(data.right, getVauMoleculeView(view));
+}
+
+function getVauMoleculeView(view: VauView): MoleculeView {
+  return {
     halfside: view.halfside,
     pos: view.pos.add(new Vec2(spike_perc * view.halfside / 2, view.halfside / 2)),
-  });
+  };
 }
 
 function drawVau_matcher(data: Sexpr, view: VauView) {
@@ -468,7 +481,7 @@ let mouse_state: {
 } = { type: "none" };
 
 let toolbar: { view: MoleculeView, value: Sexpr }[] = fromCount(10, k => {
-  return { view: { pos: new Vec2(40 + 60*k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom('0'), doAtom('0')) : doAtom((k-1).toString()) }
+  return { view: { pos: new Vec2(40 + 60 * k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom('0'), doAtom('0')) : doAtom((k - 1).toString()) }
 });
 
 function doPair(left: Sexpr, right: Sexpr): Pair {
@@ -541,8 +554,9 @@ function every_frame(cur_timestamp: number) {
   }
 
 
+  const cur_vau = cur_vaus[cur_vau_index];
   if (input.keyboard.wasPressed(KeyCode.Space)) {
-    let new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[cur_vau_index]);
+    let new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
     if (new_molecule !== null) {
       cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
     }
@@ -554,12 +568,9 @@ function every_frame(cur_timestamp: number) {
   ctx.lineWidth = 2;
   drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
 
-  drawVau(cur_vaus[cur_vau_index], {
-    pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
-    halfside: 200,
-  })
+  drawVau(cur_vau, base_vau_view);
 
-  toolbar.forEach(({view, value}) => drawMolecule(value, view));
+  toolbar.forEach(({ view, value }) => drawMolecule(value, view));
 
   const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   let molecule_mouse_path = moleculeAdressFromScreenPosition(
@@ -567,11 +578,17 @@ function every_frame(cur_timestamp: number) {
     cur_base_molecule,
     cur_molecule_view.cur,
   );
-  let hovering_toolbar_index: number | null = findIndex(toolbar, ({view, value}) => {
+  let vau_molecule_mouse_path = moleculeAdressFromScreenPosition(
+    mouse_pos,
+    cur_vau.right,
+    getVauMoleculeView(base_vau_view),
+  );
+  let hovering_toolbar_index: number | null = findIndex(toolbar, ({ view, value }) => {
     return moleculeAdressFromScreenPosition(mouse_pos, value, view) !== null;
   });
   if (hovering_toolbar_index !== null) {
     molecule_mouse_path = null;
+    vau_molecule_mouse_path = null;
   }
   if (molecule_mouse_path && input.mouse.wasPressed(MouseButton.Right)) {
     // TODO: better lerp
@@ -585,6 +602,8 @@ function every_frame(cur_timestamp: number) {
         if (input.mouse.wasPressed(MouseButton.Left)) {
           mouse_state = { type: "holding", molecule_address: molecule_mouse_path, value: getAtAddress(cur_base_molecule, molecule_mouse_path) };
         }
+      } else if (vau_molecule_mouse_path !== null) {
+        drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), vau_molecule_mouse_path), "cyan");
       } else if (hovering_toolbar_index !== null) {
         drawMoleculeHighlight(getGrandchildView(toolbar[hovering_toolbar_index].view, []), "cyan");
         if (input.mouse.wasPressed(MouseButton.Left)) {
