@@ -164,6 +164,10 @@ export class Vec2 {
         return new Vec2(this.x - x, this.y);
     }
 
+    subY(y: number): Vec2 {
+        return new Vec2(this.x, this.y - y);
+    }
+
     addX(x: number): Vec2 {
         return new Vec2(this.x + x, this.y);
     }

@@ -85,10 +85,19 @@ const base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
   halfside: 150,
 }
-const base_vau_view = {
+const base_vau_view: VauView = {
   pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
   halfside: 150,
 };
+
+const top_vau_view: VauView = { pos: base_vau_view.pos.subY(canvas_size.y * .5), halfside: base_vau_view.halfside };
+const bottom_vau_view: VauView = { pos: base_vau_view.pos.addY(canvas_size.y * .5), halfside: base_vau_view.halfside };
+
+const default_vau: Pair = parseSexpr(`(
+  (1 . @2)
+  .
+  (@2 . 1)
+)`) as Pair;
 
 const cur_vaus: Pair[] = [
   parseSexpr(`(
@@ -580,11 +589,29 @@ function every_frame(cur_timestamp: number) {
     }
   }
 
+  if (input.keyboard.wasPressed(KeyCode.KeyL)) {
+    // delete vau
+    if (cur_vaus.length > 1) {
+      cur_vaus.splice(cur_vau_index, 1);
+      if (cur_vau_index === cur_vaus.length) {
+        cur_vau_index -= 1;
+      }
+    }
+  }
   if (input.keyboard.wasPressed(KeyCode.KeyI)) {
-    cur_vau_index = mod(cur_vau_index - 1, cur_vaus.length);
+    if (cur_vau_index > 0) {
+      cur_vau_index -= 1;
+    } else {
+      cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
+    }
   }
   if (input.keyboard.wasPressed(KeyCode.KeyK)) {
-    cur_vau_index = mod(cur_vau_index + 1, cur_vaus.length);
+    if (cur_vau_index + 1 < cur_vaus.length) {
+      cur_vau_index += 1;
+    } else {
+      cur_vaus.push(cloneSexpr(default_vau) as Pair);
+      cur_vau_index += 1;
+    }
   }
 
   const digits = [
@@ -628,6 +655,12 @@ function every_frame(cur_timestamp: number) {
   drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
 
   drawVau(cur_vau, base_vau_view);
+  if (cur_vau_index > 0) {
+    drawVau(cur_vaus[cur_vau_index - 1], top_vau_view);
+  }
+  if (cur_vau_index + 1 < cur_vaus.length) {
+    drawVau(cur_vaus[cur_vau_index + 1], bottom_vau_view);
+  }
 
   toolbar_atoms.forEach(({ view, value }) => drawMolecule(value, view));
   toolbar_templates.forEach(({ view, value }) => drawMatcher(value, view));
