@@ -106,11 +106,6 @@ const cur_vaus: Pair[] = [
     (+ . (@t . (@h . @b)))
   )`) as Pair,
   parseSexpr(`(
-    (@a . (nil . @a))
-    .
-    @a
-  )`) as Pair,
-  parseSexpr(`(
     (+ . (nil . @a))
     .
     @a
@@ -141,6 +136,7 @@ function cloneSexpr(sexpr: Sexpr): Sexpr {
   }
 }
 
+/** returns a copy */
 function setAtAddress(molecule: Sexpr, address: Address, value: Sexpr): Sexpr {
   if (address.length === 0) return value;
   const result = cloneSexpr(molecule);
@@ -214,6 +210,23 @@ function afterVau(molecule: Sexpr, vau: Pair): Sexpr | null {
   if (bindings === null) return null;
   return applyBindings(vau.right, bindings);
 }
+
+function afterRecursiveVau(molecule: Sexpr, vau: Pair): Sexpr | null {
+  let addresses_to_try: Address[] = [[]];
+  while (addresses_to_try.length > 0) {
+    const cur_address = addresses_to_try.shift()!;
+    const cur_molecule = getAtAddress(molecule, cur_address);
+    const result = afterVau(cur_molecule, vau);
+    if (result !== null) {
+      return setAtAddress(molecule, cur_address, result);
+    } else if (cur_molecule.type === "pair") {
+      addresses_to_try.push([...cur_address, true]);
+      addresses_to_try.push([...cur_address, false]);
+    }
+  }
+  return null;
+}
+
 
 function isValidAddress(molecule: Sexpr, address: Address): boolean {
   try {
@@ -641,10 +654,27 @@ function every_frame(cur_timestamp: number) {
 
 
   const cur_vau = cur_vaus[cur_vau_index];
-  if (input.keyboard.wasPressed(KeyCode.Space)) {
+
+  if (input.keyboard.wasPressed(KeyCode.KeyZ)) {
+    // apply current vau to current molecule
     const new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
     if (new_molecule !== null) {
       cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
+    }
+  } else if (input.keyboard.wasPressed(KeyCode.KeyX)) {
+    // apply current vau to whole molecule
+    const new_molecule = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+    if (new_molecule !== null) {
+      cur_base_molecule = new_molecule;
+    }
+  } else if (input.keyboard.wasPressed(KeyCode.KeyC)) {
+    // apply all vaus to whole molecule until one works
+    for (let k = 0; k < cur_vaus.length; k++) {
+      const new_molecule = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
+      if (new_molecule !== null) {
+        cur_base_molecule = new_molecule;
+        break;
+      }
     }
   }
 
