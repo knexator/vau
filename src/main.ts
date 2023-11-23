@@ -634,7 +634,7 @@ let levels: Level[] = [
         }
       }
       return [
-        helper(final_has_red, Math.floor(rand.next() * 7) + 2),
+        helper(final_has_red, Math.floor(rand.next() * 3) + 2),
         doAtom(final_has_red ? '2' : '3'),
       ];
     }
@@ -878,8 +878,8 @@ function game_frame(delta_time: number) {
         }
       }
     }
-  } 
-  
+  }
+
 
   ctx.lineWidth = 2;
   drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
@@ -897,8 +897,9 @@ function game_frame(delta_time: number) {
 
   const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   {
-    let slot_rect = new Rectangle(new Vec2(canvas_size.x * .85, 0), new Vec2(canvas_size.x * .15, canvas_size.x * .1));
-    if (slot_rect.contains(mouse_pos)) {
+    // menu button
+    let menu_rect = new Rectangle(new Vec2(canvas_size.x * .85, 0), new Vec2(canvas_size.x * .15, canvas_size.x * .1));
+    if (menu_rect.contains(mouse_pos)) {
       ctx.fillStyle = "#BBBBBB";
       if (input.mouse.wasPressed(MouseButton.Left)) {
         STATE = "menu"
@@ -907,9 +908,40 @@ function game_frame(delta_time: number) {
     } else {
       ctx.fillStyle = "#444444";
     }
-    fillRect(ctx, slot_rect);
+    fillRect(ctx, menu_rect);
     ctx.fillStyle = "black";
-    fillText(ctx, "Menu", slot_rect.getCenter());
+    fillText(ctx, "Menu", menu_rect.getCenter());
+  }
+  {
+    // select test case
+    if (cur_test_case > 0) {
+      let rect_prev = Rectangle.fromParams({ bottomLeft: new Vec2(0, canvas.height), size: new Vec2(50, 50) });
+      if (rect_prev.contains(mouse_pos)) {
+        ctx.fillStyle = "#BBBBBB";
+        if (input.mouse.wasPressed(MouseButton.Left)) {
+          cur_test_case -= 1;
+          cur_base_molecule = cur_level.get_test(cur_test_case)[0];
+        }
+      } else {
+        ctx.fillStyle = "#444444";
+      }
+      fillRect(ctx, rect_prev);
+    }
+    ctx.fillStyle = "black";
+    fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, canvas.height - 25));
+    {
+      let rect_next = Rectangle.fromParams({ bottomLeft: new Vec2(150, canvas.height), size: new Vec2(50, 50) });
+      if (rect_next.contains(mouse_pos)) {
+        ctx.fillStyle = "#BBBBBB";
+        if (input.mouse.wasPressed(MouseButton.Left)) {
+          cur_test_case += 1;
+          cur_base_molecule = cur_level.get_test(cur_test_case)[0];
+        }
+      } else {
+        ctx.fillStyle = "#444444";
+      }
+      fillRect(ctx, rect_next);
+    }
   }
   let cur_mouse_place: MoleculePlace;
   {
