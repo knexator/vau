@@ -864,7 +864,22 @@ function game_frame(delta_time: number) {
         break;
       }
     }
-  }
+  } else if (input.keyboard.wasPressed(KeyCode.KeyV)) {
+    // apply all vaus to whole molecule until one works, until none of them work
+    let any_changes = true;
+    while (any_changes) {
+      any_changes = false;
+      for (let k = 0; k < cur_vaus.length; k++) {
+        const new_molecule = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
+        if (new_molecule !== null) {
+          cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
+          any_changes = true;
+          break;
+        }
+      }
+    }
+  } 
+  
 
   ctx.lineWidth = 2;
   drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
