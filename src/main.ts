@@ -587,7 +587,8 @@ let STATE: {
   type: "menu",
   selected_level_id: string | null,
   selected_solution_slot: number | null,
-} | { type: "game" } = { type: "menu", selected_level_id: null, selected_solution_slot: null };
+} | { type: "game" } = { type: "game" };
+//{ type: "menu", selected_level_id: null, selected_solution_slot: null };
 
 let levels: Level[] = [
   {
@@ -646,9 +647,30 @@ function every_frame(cur_timestamp: number) {
   const delta_time = (cur_timestamp - last_timestamp) / 1000;
   last_timestamp = cur_timestamp;
   input.startFrame();
-
   spike_perc = CONFIG.tmp01;
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+
+  switch (STATE.type) {
+    case "menu":
+      menu_frame(delta_time);
+      break;
+    case "game":
+      game_frame(delta_time);
+      break;
+    default:
+      throw new Error("");
+  }
+
+  requestAnimationFrame(every_frame);
+}
+
+function menu_frame(delta_time: number) {
+
+}
+
+function game_frame(delta_time: number) {
   if (input.keyboard.wasPressed(KeyCode.KeyA)) {
     if (cur_molecule_address.length > 0) {
       cur_molecule_address.pop();
@@ -743,9 +765,6 @@ function every_frame(cur_timestamp: number) {
       }
     }
   }
-
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.lineWidth = 2;
   drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
@@ -915,8 +934,6 @@ function every_frame(cur_timestamp: number) {
     default:
       throw new Error("");
   }
-
-  requestAnimationFrame(every_frame);
 }
 
 // library stuff /////////////////////////
