@@ -2,8 +2,9 @@ import GUI from "lil-gui";
 import { Input, KeyCode, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
 import { eqArrays, findIndex, fromCount, objectMap, zip2 } from "./kommon/kommon";
-import { Rectangle, Vec2, mod, towards as approach, lerp, inRange } from "./kommon/math";
+import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05 } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
+import Rand, { PRNG } from 'rand-seed';
 
 import grammar from "./sexpr.pegjs?raw"
 import * as peggy from "peggy";
@@ -571,6 +572,71 @@ function doPair(left: Sexpr, right: Sexpr): Pair {
 
 function doAtom(value: string): Atom {
   return { type: "atom", value };
+}
+
+type Level = {
+  id: string, user_slots: SolutionSlot[],
+  generate_test: (rand: Rand) => [Sexpr, Sexpr]
+};
+type SolutionSlot = {
+  name: string,
+  vaus: Pair[],
+};
+
+let STATE: {
+  type: "menu",
+  selected_level_id: string | null,
+  selected_solution_slot: number | null,
+} | { type: "game" } = { type: "menu", selected_level_id: null, selected_solution_slot: null };
+
+let levels: Level[] = [
+  {
+    id: "anyred",
+    user_slots: [],
+    generate_test: (rand) => {
+      let final_has_red = rand.next() > .5;
+      function helper(has_red: boolean, depth: number): Sexpr {
+        if (depth === 0) {
+          if (has_red) {
+            return doAtom('2');
+          } else {
+            return doAtom('3');
+          }
+        } else {
+          let left_has_red = has_red && (rand.next() < .5);
+          let right_has_red = has_red && (!left_has_red || (rand.next() < .2));
+          return doPair(
+            helper(left_has_red, depth - 1),
+            helper(right_has_red, depth - 1),
+          );
+        }
+      }
+      return [
+        helper(final_has_red, Math.floor(rand.next() * 7) + 2),
+        doAtom(final_has_red ? '2' : '3'),
+      ];
+    }
+  },
+  {
+    id: "add",
+    user_slots: [],
+    generate_test: (rand) => {
+      let n1 = Math.floor(rand.next() * 6);
+      let n2 = Math.floor(rand.next() * 6);
+      return [
+        doPair(makePeanoSexpr(n1), makePeanoSexpr(n2)),
+        makePeanoSexpr(n1 + n2),
+      ];
+    },
+  },
+];
+
+function makePeanoSexpr(n: number): Sexpr {
+  let result: Sexpr = doAtom('0');
+  for (let k = 0; k < n; k++) {
+    result = doPair(doAtom('1'), result);
+  }
+  return result;
 }
 
 let last_timestamp = 0;
