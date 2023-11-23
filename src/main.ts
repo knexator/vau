@@ -69,6 +69,10 @@ if (DEBUG) {
   // gui.hide();
 }
 
+function fillRect(ctx: CanvasRenderingContext2D, rect: Rectangle) {
+  ctx.fillRect(rect.topLeft.x, rect.topLeft.y, rect.size.x, rect.size.y);
+}
+
 function moveTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
   ctx.moveTo(x, y);
 }
@@ -585,10 +589,9 @@ type SolutionSlot = {
 
 let STATE: {
   type: "menu",
-  selected_level_id: string | null,
+  selected_level_index: number | null,
   selected_solution_slot: number | null,
-} | { type: "game" } = { type: "game" };
-//{ type: "menu", selected_level_id: null, selected_solution_slot: null };
+} | { type: "game" } = { type: "menu", selected_level_index: null, selected_solution_slot: null };
 
 let levels: Level[] = [
   {
@@ -667,7 +670,44 @@ function every_frame(cur_timestamp: number) {
 }
 
 function menu_frame(delta_time: number) {
+  if (STATE.type !== "menu") throw new Error("");
+  let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
 
+  ctx.beginPath();
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+  ctx.moveTo(canvas_size.x / 3, 0);
+  ctx.lineTo(canvas_size.x / 3, canvas_size.y);
+  ctx.moveTo(canvas_size.x * .75, 0);
+  ctx.lineTo(canvas_size.x * .75, canvas_size.y);
+  ctx.stroke();
+
+  for (let k = 0; k < levels.length; k++) {
+    let button_rect = new Rectangle(new Vec2(50, 50 + k * 100), Vec2.both(50));
+    if (button_rect.contains(mouse_pos)) {
+      ctx.fillStyle = "#BBBBBB";
+      if (input.mouse.wasPressed(MouseButton.Left)) {
+        STATE.selected_level_index = k;
+      }
+    } else if (k === STATE.selected_level_index) {
+      ctx.fillStyle = "#999999";
+    } else {
+      ctx.fillStyle = "#444444";
+    }
+    fillRect(ctx, button_rect);
+  }
+
+  if (STATE.selected_level_index !== null) {
+    let rand = new Rand('menu_sample');
+    [.2, .5, .8].forEach(y => {
+      if (STATE.type !== "menu") throw new Error("");
+      const origin_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.4, y)), halfside: canvas.height / 8 };
+      const target_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.6, y)), halfside: canvas.height / 8 }
+      const [origin, target] = levels[STATE.selected_level_index!].generate_test(rand);
+      drawMolecule(origin, origin_molecule_view);
+      drawMolecule(target, target_molecule_view);
+    })
+  }
 }
 
 function game_frame(delta_time: number) {

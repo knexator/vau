@@ -265,6 +265,10 @@ export class Rectangle {
         public topLeft: Vec2,
         public size: Vec2) { }
 
+    contains(point: Vec2): boolean {
+        return Vec2.inBounds(point.sub(this.topLeft), this.size);
+    }
+
     static readonly unit = new Rectangle(Vec2.zero, Vec2.one);
 
     static fromParams(params: {
