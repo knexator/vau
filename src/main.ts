@@ -653,6 +653,20 @@ let levels: Level[] = [
   ),
 ];
 
+{
+  // load
+  levels.forEach(level => {
+    let stuff = window.localStorage.getItem(`knexator_vau_${level.id}`);
+    if (stuff !== null) {
+      level.user_slots = JSON.parse(stuff);
+    }
+  });
+}
+
+function save_cur_level() {
+  window.localStorage.setItem(`knexator_vau_${cur_level.id}`, JSON.stringify(cur_level.user_slots));
+}
+
 function makePeanoSexpr(n: number): Sexpr {
   let result: Sexpr = doAtom('0');
   for (let k = 0; k < n; k++) {
@@ -791,6 +805,7 @@ function game_frame(delta_time: number) {
     // delete vau
     if (cur_vaus.length > 1) {
       cur_vaus.splice(cur_vau_index, 1);
+      save_cur_level();
       if (cur_vau_index === cur_vaus.length) {
         cur_vau_index -= 1;
       }
@@ -801,6 +816,7 @@ function game_frame(delta_time: number) {
       cur_vau_index -= 1;
     } else {
       cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
+      save_cur_level();
     }
   }
   if (input.keyboard.wasPressed(KeyCode.KeyK)) {
@@ -808,6 +824,7 @@ function game_frame(delta_time: number) {
       cur_vau_index += 1;
     } else {
       cur_vaus.push(cloneSexpr(default_vau) as Pair);
+      save_cur_level();
       cur_vau_index += 1;
     }
   }
@@ -840,6 +857,7 @@ function game_frame(delta_time: number) {
 
   if (cur_vaus.length === 0) {
     cur_vaus.push(cloneSexpr(default_vau) as Pair);
+    save_cur_level();
   }
   const cur_vau = cur_vaus[cur_vau_index];
 
@@ -902,6 +920,7 @@ function game_frame(delta_time: number) {
     if (menu_rect.contains(mouse_pos)) {
       ctx.fillStyle = "#BBBBBB";
       if (input.mouse.wasPressed(MouseButton.Left)) {
+        save_cur_level();
         STATE = "menu"
         return;
       }
