@@ -269,6 +269,10 @@ export class Rectangle {
         return Vec2.inBounds(point.sub(this.topLeft), this.size);
     }
 
+    getCenter(): Vec2 {
+        return this.topLeft.add(this.size.scale(.5));
+    }
+
     static readonly unit = new Rectangle(Vec2.zero, Vec2.one);
 
     static fromParams(params: {
