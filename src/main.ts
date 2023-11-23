@@ -122,6 +122,8 @@ let cur_vaus: Pair[] = [
 ];
 let cur_vau_index = 0;
 
+let cur_test_case: number = 0;
+
 type Address = boolean[];
 
 function getAtAddress(molecule: Sexpr, address: Address): Sexpr {
@@ -582,10 +584,17 @@ function doAtom(value: string): Atom {
   return { type: "atom", value };
 }
 
-type Level = {
-  id: string, user_slots: SolutionSlot[],
-  generate_test: (rand: Rand) => [Sexpr, Sexpr]
-};
+class Level {
+  constructor(
+    public id: string,
+    public user_slots: SolutionSlot[],
+    public generate_test: (rand: Rand) => [Sexpr, Sexpr]
+  ) { }
+
+  get_test(n: number) {
+    return this.generate_test(new Rand(`test_${n}`));
+  }
+}
 type SolutionSlot = {
   name: string,
   vaus: Pair[],
@@ -600,11 +609,13 @@ let STATE: "menu" | "game" = "menu";
 let selected_level_index: number | null = null;
 let selected_solution_slot: number | null = null;
 
+let cur_level: Level;
+
 let levels: Level[] = [
-  {
-    id: "anyred",
-    user_slots: [],
-    generate_test: (rand) => {
+  new Level(
+    "anyred",
+    [],
+    (rand) => {
       let final_has_red = rand.next() > .5;
       function helper(has_red: boolean, depth: number): Sexpr {
         if (depth === 0) {
@@ -627,11 +638,11 @@ let levels: Level[] = [
         doAtom(final_has_red ? '2' : '3'),
       ];
     }
-  },
-  {
-    id: "add",
-    user_slots: [],
-    generate_test: (rand) => {
+  ),
+  new Level(
+    "add",
+    [],
+    (rand) => {
       let n1 = Math.floor(rand.next() * 6);
       let n2 = Math.floor(rand.next() * 6);
       return [
@@ -639,7 +650,7 @@ let levels: Level[] = [
         makePeanoSexpr(n1 + n2),
       ];
     },
-  },
+  ),
 ];
 
 function makePeanoSexpr(n: number): Sexpr {
@@ -720,9 +731,11 @@ function menu_frame(delta_time: number) {
         ctx.fillStyle = "#BBBBBB";
         if (input.mouse.wasPressed(MouseButton.Left)) {
           STATE = "game";
-          cur_base_molecule = level.generate_test(rand)[0];
+          cur_level = level;
           cur_vaus = slot.vaus;
           cur_vau_index = 0;
+          cur_test_case = 0;
+          cur_base_molecule = cur_level.get_test(cur_test_case)[0];
           return;
         }
       } else {
@@ -840,14 +853,14 @@ function game_frame(delta_time: number) {
     // apply current vau to whole molecule
     const new_molecule = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
     if (new_molecule !== null) {
-      cur_base_molecule = new_molecule;
+      cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
     }
   } else if (input.keyboard.wasPressed(KeyCode.KeyC)) {
     // apply all vaus to whole molecule until one works
     for (let k = 0; k < cur_vaus.length; k++) {
       const new_molecule = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
       if (new_molecule !== null) {
-        cur_base_molecule = new_molecule;
+        cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule);
         break;
       }
     }
