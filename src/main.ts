@@ -1,7 +1,7 @@
 import GUI from "lil-gui";
 import { Input, KeyCode, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
-import { DefaultMap, eqArrays, findIndex, fromCount, objectMap, reversedForEach, zip2 } from "./kommon/kommon";
+import { DefaultMap, eqArrays, findIndex, fromCount, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05 } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
@@ -684,6 +684,28 @@ let levels: Level[] = [
     },
   ),
   new Level(
+    "reverse",
+    [],
+    (rand) => {
+      const atoms = ['4', '5', '6', '7', '8'];
+      function randomSexpr(max_depth: number): Sexpr {
+        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        return doPair(
+          randomSexpr(Math.floor(rand.next() * max_depth)),
+          randomSexpr(Math.floor(rand.next() * max_depth)),
+        );
+      }
+      let asdf = fromCount(randomInt(rand, 0, 4), _ => randomSexpr(randomInt(rand, 1, 3)));
+      return [
+        doPair(
+          doAtom('1'),
+          doList(asdf),
+        ),
+        doList(reversed(asdf)),
+      ]
+    }
+  ),
+  new Level(
     "equal",
     [],
     (rand) => {
@@ -742,7 +764,7 @@ let levels: Level[] = [
 ];
 
 function randomInt(rand: Rand, low_inclusive: number, high_exclusive: number): number {
-    return low_inclusive + Math.floor(rand.next() * (high_exclusive - low_inclusive));
+  return low_inclusive + Math.floor(rand.next() * (high_exclusive - low_inclusive));
 }
 
 function randomChoiceWithoutRepeat<T>(rand: Rand, arr: T[], count: number) {

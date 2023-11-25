@@ -19,8 +19,12 @@ export function eqArrays<T>(a: T[], b: T[]): boolean {
     return a.length === b.length && a.every((v, k) => v === b[k]);
 }
 
+export function reversed<T>(array: T[]) {
+    return array.map((_item, idx) => array[array.length - 1 - idx]);
+}
+
 export function reversedForEach<T>(arr: T[], callback: (value: T, index?: number, obj?: T[]) => void): void {
-    for (let k = arr.length -1; k >= 0; k--) {
+    for (let k = arr.length - 1; k >= 0; k--) {
         callback(arr[k], k, arr);
     }
 }
@@ -79,7 +83,7 @@ export class DefaultMap<K, V> {
         private init_fn: (key: K) => V,
         private inner_map = new Map<K, V>(),
     ) { }
-    
+
     get(key: K) {
         let result = this.inner_map.get(key);
         if (result === undefined) {
