@@ -89,11 +89,17 @@ let spike_perc = 1 / 3;
 
 // actual game logic
 let cur_base_molecule = parseSexpr("(+  (1 1 1) . (+ (1 1) . (1)))");
+let cur_target = parseSexpr("(1 1 1 1 1 1)");
 let cur_molecule_address = [] as Address;
 const base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
   halfside: 150,
-}
+};
+const target_view: MoleculeView = {
+  pos: canvas_size.mul(new Vec2(.2, .9)),
+  halfside: 35,
+};
+
 const base_vau_view: VauView = {
   pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
   halfside: 150,
@@ -788,7 +794,7 @@ function menu_frame(delta_time: number) {
           cur_vaus = slot.vaus;
           cur_vau_index = 0;
           cur_test_case = 0;
-          cur_base_molecule = cur_level.get_test(cur_test_case)[0];
+          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
           return;
         }
       } else {
@@ -940,6 +946,7 @@ function game_frame(delta_time: number) {
 
   ctx.lineWidth = 2;
   drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
+  drawMolecule(cur_target, target_view);
 
   drawVau(cur_vau, base_vau_view);
   if (cur_vau_index > 0) {
@@ -978,7 +985,7 @@ function game_frame(delta_time: number) {
         ctx.fillStyle = "#BBBBBB";
         if (input.mouse.wasPressed(MouseButton.Left)) {
           cur_test_case -= 1;
-          cur_base_molecule = cur_level.get_test(cur_test_case)[0];
+          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
         }
       } else {
         ctx.fillStyle = "#444444";
@@ -993,7 +1000,7 @@ function game_frame(delta_time: number) {
         ctx.fillStyle = "#BBBBBB";
         if (input.mouse.wasPressed(MouseButton.Left)) {
           cur_test_case += 1;
-          cur_base_molecule = cur_level.get_test(cur_test_case)[0];
+          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
         }
       } else {
         ctx.fillStyle = "#444444";
