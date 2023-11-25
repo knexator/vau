@@ -1,7 +1,7 @@
 import GUI from "lil-gui";
 import { Input, KeyCode, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
-import { eqArrays, findIndex, fromCount, objectMap, zip2 } from "./kommon/kommon";
+import { DefaultMap, eqArrays, findIndex, fromCount, objectMap, reversedForEach, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05 } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
@@ -285,11 +285,20 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
       ctx.stroke();
       ctx.globalAlpha = 1;
     } else {
+      let profile = atom_shapes.get(data.value);
       ctx.beginPath();
       ctx.fillStyle = colorFromAtom(data.value).toHex();
       moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-view.halfside));
       lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
+      profile.forEach(({ x: time, y: offset }) => {
+        let thing = new Vec2(view.halfside * 2 + offset * view.halfside, lerp(-view.halfside, 0, time));
+        lineTo(ctx, view.pos.add(thing));
+      });
+      reversedForEach(profile, ({ x: time, y: offset }) => {
+        let thing = new Vec2(view.halfside * 2 - offset * view.halfside, lerp(view.halfside, 0, time));
+        lineTo(ctx, view.pos.add(thing));
+      });
       lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
       lineTo(ctx, view.pos.addY(view.halfside));
       ctx.closePath();
@@ -454,11 +463,20 @@ function drawMatcher(data: Sexpr, view: VauView) {
       ctx.globalAlpha = 1;
     } else {
       const halfside = view.halfside;
+      let profile = atom_shapes.get(data.value);
       ctx.beginPath();
       ctx.fillStyle = colorFromAtom(data.value).toHex();
       moveTo(ctx, view.pos.addX(halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-halfside));
       lineTo(ctx, view.pos.add(new Vec2(-halfside, -halfside)));
+      profile.forEach(({ x: time, y: offset }) => {
+        let thing = new Vec2(-halfside + offset * view.halfside, lerp(-view.halfside, 0, time));
+        lineTo(ctx, view.pos.add(thing));
+      });
+      reversedForEach(profile, ({ x: time, y: offset }) => {
+        let thing = new Vec2(-halfside - offset * view.halfside, lerp(view.halfside, 0, time));
+        lineTo(ctx, view.pos.add(thing));
+      });
       lineTo(ctx, view.pos.add(new Vec2(-halfside, halfside)));
       lineTo(ctx, view.pos.addY(halfside));
       ctx.closePath();
@@ -1162,6 +1180,28 @@ function game_frame(delta_time: number) {
       throw new Error("");
   }
 }
+
+// (y_time, x_offset), with x_offset in terms of halfside
+// (0, 0) & (1, 0) are implicit
+type AtomProfile = Vec2[];
+const atom_shapes = new DefaultMap<string, AtomProfile>((_) => [], new Map(Object.entries({
+  '0': [new Vec2(.75, -.25)],
+  '1': [new Vec2(.2, .2), new Vec2(.8, .2)],
+  '2': [new Vec2(1/6, .2), new Vec2(.5, -.2), new Vec2(5/6, .2)],
+  '3': fromCount(10, k => {
+    let t = k / 10;
+    return new Vec2(t, -.2 * Math.sin(t * Math.PI));
+  }),
+  '4': [new Vec2(.2, .2), new Vec2(.4, -.2), new Vec2(.7, .2)],
+  '5': [ new Vec2(.5, .25)],
+  '6': fromCount(2, k => {
+    let c = (2*k+1) / 4;
+    let s = .6 / 4;
+    return [new Vec2(c-s, 0), new Vec2(c, -.25), new Vec2(c+s, 0)];
+  }).flat(1),
+  // '5': [new Vec2(.2, 0), new Vec2(.5, .2), new Vec2(.8, 0)],
+  // '5': 
+})));
 
 // library stuff /////////////////////////
 

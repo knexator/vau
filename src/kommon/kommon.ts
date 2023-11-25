@@ -15,8 +15,14 @@ export function fromRange<T>(lo: number, hi: number, callback: (index: number) =
     return result;
 }
 
-export function eqArrays<T>(a: T[], b: T[]) : boolean {
+export function eqArrays<T>(a: T[], b: T[]): boolean {
     return a.length === b.length && a.every((v, k) => v === b[k]);
+}
+
+export function reversedForEach<T>(arr: T[], callback: (value: T, index?: number, obj?: T[]) => void): void {
+    for (let k = arr.length -1; k >= 0; k--) {
+        callback(arr[k], k, arr);
+    }
 }
 
 export function findIndex<T>(arr: T[], predicate: (value: T, index?: number, obj?: T[]) => boolean): number | null {
@@ -68,20 +74,19 @@ export function objectMap<T, S>(object: Record<string, T>, map_fn: (x: T) => S):
     return result;
 }
 
-export class DefaultDict<T> {
-    constructor(init_fn: () => T) {
-        // typing doesn't work :(
-        let target: Record<string | symbol | number, T> = {};
-        return new Proxy(target, {
-            get: (target, name): T => {
-                if (name in target) {
-                    return target[name];
-                } else {
-                    target[name] = init_fn();
-                    return target[name];
-                }
-            }
-        })
+export class DefaultMap<K, V> {
+    constructor(
+        private init_fn: (key: K) => V,
+        private inner_map = new Map<K, V>(),
+    ) { }
+    
+    get(key: K) {
+        let result = this.inner_map.get(key);
+        if (result === undefined) {
+            result = this.init_fn(key);
+            this.inner_map.set(key, result);
+        }
+        return result;
     }
 }
 
