@@ -1109,19 +1109,15 @@ function game_frame(delta_time: number) {
       break;
     }
     case "holding": {
-      let no_collision = true;
       switch (mouse_state.source.type) {
         case "molecule":
           drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, mouse_state.source.molecule_address), "blue");
-          no_collision = (cur_mouse_place.type !== "molecule") || !eqArrays(cur_mouse_place.molecule_address, mouse_state.source.molecule_address);
           break;
         case "vau_molecule":
           drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), mouse_state.source.vau_molecule_address), "blue");
-          no_collision = (cur_mouse_place.type !== "vau_molecule") || !eqArrays(cur_mouse_place.vau_molecule_address, mouse_state.source.vau_molecule_address);
           break;
         case "vau_matcher":
           drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, mouse_state.source.vau_matcher_address), "blue");
-          no_collision = (cur_mouse_place.type !== "vau_matcher") || !eqArrays(cur_mouse_place.vau_matcher_address, mouse_state.source.vau_matcher_address);
           break;
         case "toolbar_atoms":
           drawMoleculeHighlight(getGrandchildView(toolbar_atoms[mouse_state.source.atom_index].view, []), "blue");
@@ -1134,42 +1130,40 @@ function game_frame(delta_time: number) {
           throw new Error("");
       }
 
-      if (no_collision) {
-        switch (cur_mouse_place.type) {
-          case "toolbar_templates":
-          case "toolbar_atoms":
-          case "none":
-            break;
-          case "molecule":
-            drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), "Chartreuse");
-            ctx.globalAlpha = .5;
-            drawMolecule(mouse_state.value, getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address));
-            ctx.globalAlpha = 1;
-            if (input.mouse.wasReleased(MouseButton.Left)) {
-              cur_base_molecule = setAtAddress(cur_base_molecule, cur_mouse_place.molecule_address, mouse_state.value);
-            }
-            break;
-          case "vau_molecule":
-            drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address), "Chartreuse");
-            ctx.globalAlpha = .5;
-            drawMolecule(mouse_state.value, getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address));
-            ctx.globalAlpha = 1;
-            if (input.mouse.wasReleased(MouseButton.Left)) {
-              cur_vau.right = setAtAddress(cur_vau.right, cur_mouse_place.vau_molecule_address, mouse_state.value);
-            }
-            break;
-          case "vau_matcher":
-            drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "Chartreuse");
-            ctx.globalAlpha = .5;
-            drawMatcher(mouse_state.value, getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address));
-            ctx.globalAlpha = 1;
-            if (input.mouse.wasReleased(MouseButton.Left)) {
-              cur_vau.left = setAtAddress(cur_vau.left, cur_mouse_place.vau_matcher_address, mouse_state.value);
-            }
-            break;
-          default:
-            throw new Error("");
-        }
+      switch (cur_mouse_place.type) {
+        case "toolbar_templates":
+        case "toolbar_atoms":
+        case "none":
+          break;
+        case "molecule":
+          drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), "Chartreuse");
+          ctx.globalAlpha = .5;
+          drawMolecule(mouse_state.value, getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address));
+          ctx.globalAlpha = 1;
+          if (input.mouse.wasReleased(MouseButton.Left)) {
+            cur_base_molecule = setAtAddress(cur_base_molecule, cur_mouse_place.molecule_address, mouse_state.value);
+          }
+          break;
+        case "vau_molecule":
+          drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address), "Chartreuse");
+          ctx.globalAlpha = .5;
+          drawMolecule(mouse_state.value, getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address));
+          ctx.globalAlpha = 1;
+          if (input.mouse.wasReleased(MouseButton.Left)) {
+            cur_vau.right = setAtAddress(cur_vau.right, cur_mouse_place.vau_molecule_address, mouse_state.value);
+          }
+          break;
+        case "vau_matcher":
+          drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "Chartreuse");
+          ctx.globalAlpha = .5;
+          drawMatcher(mouse_state.value, getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address));
+          ctx.globalAlpha = 1;
+          if (input.mouse.wasReleased(MouseButton.Left)) {
+            cur_vau.left = setAtAddress(cur_vau.left, cur_mouse_place.vau_matcher_address, mouse_state.value);
+          }
+          break;
+        default:
+          throw new Error("");
       }
       if (input.mouse.wasReleased(MouseButton.Left)) {
         mouse_state = { type: "none" };
@@ -1187,17 +1181,17 @@ type AtomProfile = Vec2[];
 const atom_shapes = new DefaultMap<string, AtomProfile>((_) => [], new Map(Object.entries({
   '0': [new Vec2(.75, -.25)],
   '1': [new Vec2(.2, .2), new Vec2(.8, .2)],
-  '2': [new Vec2(1/6, .2), new Vec2(.5, -.2), new Vec2(5/6, .2)],
+  '2': [new Vec2(1 / 6, .2), new Vec2(.5, -.2), new Vec2(5 / 6, .2)],
   '3': fromCount(10, k => {
     let t = k / 10;
     return new Vec2(t, -.2 * Math.sin(t * Math.PI));
   }),
   '4': [new Vec2(.2, .2), new Vec2(.4, -.2), new Vec2(.7, .2)],
-  '5': [ new Vec2(.5, .25)],
+  '5': [new Vec2(.5, .25)],
   '6': fromCount(2, k => {
-    let c = (2*k+1) / 4;
+    let c = (2 * k + 1) / 4;
     let s = .6 / 4;
-    return [new Vec2(c-s, 0), new Vec2(c, -.25), new Vec2(c+s, 0)];
+    return [new Vec2(c - s, 0), new Vec2(c, -.25), new Vec2(c + s, 0)];
   }).flat(1),
   // '5': [new Vec2(.2, 0), new Vec2(.5, .2), new Vec2(.8, 0)],
   // '5': 
