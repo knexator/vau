@@ -651,7 +651,46 @@ let levels: Level[] = [
       ];
     },
   ),
+  new Level(
+    "equal",
+    [],
+    (rand) => {
+      let generate_equal = rand.next() > .5;
+      const atoms = ['4', '5', '6'];
+      function helper(equal: boolean, max_depth: number): [Sexpr, Sexpr] {
+        if (max_depth === 0) {
+          let v1 = randomChoice(rand, atoms);
+          let v2 = randomChoice(rand, atoms);
+          while (v2 === v1) {
+            v2 = randomChoice(rand, atoms);
+          }
+          return [doAtom(v1), doAtom(equal ? v1 : v2)];
+        } else {
+          let lefts = helper(equal, Math.floor(rand.next() * max_depth));
+          let rights = helper(equal, Math.floor(rand.next() * max_depth));
+          return [
+            doPair(lefts[0], rights[0]),
+            doPair(lefts[1], rights[1]),
+          ];
+        }
+      }
+      return [
+        doPair(
+          doAtom('1'),
+          doPair(...helper(generate_equal, Math.floor(rand.next() * 5))),
+        ),
+        doAtom(generate_equal ? '2' : '3'),
+      ]
+    }
+  ),
 ];
+
+function randomChoice<T>(rand: Rand, arr: T[]) {
+  if (arr.length === 0) {
+    throw new Error("can't choose out of an empty array");
+  }
+  return arr[Math.floor(rand.next() * arr.length)];
+}
 
 {
   // load
@@ -730,7 +769,7 @@ function menu_frame(delta_time: number) {
 
   if (selected_level_index !== null) {
     let level = levels[selected_level_index]
-    let rand = new Rand('menu_sample');
+    let rand = new Rand(`menu_sample_${level.id}`);
     [.2, .5, .8].forEach(y => {
       const origin_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.4, y)), halfside: canvas.height / 8 };
       const target_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.6, y)), halfside: canvas.height / 8 }
