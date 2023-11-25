@@ -600,6 +600,14 @@ const toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = from
   return { view: { pos: new Vec2(100 + 95 * k, 100), halfside: 20 }, value: doAtom(`@${k}`), used: false };
 });
 
+function doList(values: Sexpr[]): Sexpr {
+  let result = doAtom('0') as Sexpr;
+  reversedForEach(values, v => {
+    result = doPair(v, result);
+  });
+  return result;
+}
+
 function doPair(left: Sexpr, right: Sexpr): Pair {
   return { type: "pair", left, right };
 }
@@ -707,7 +715,49 @@ let levels: Level[] = [
       ]
     }
   ),
+  new Level(
+    "lookup",
+    [],
+    (rand) => {
+      const atoms = ['4', '5', '6', '7', '8'];
+      function randomSexpr(max_depth: number): Sexpr {
+        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        return doPair(
+          randomSexpr(Math.floor(rand.next() * max_depth)),
+          randomSexpr(Math.floor(rand.next() * max_depth)),
+        );
+      }
+      let keys = randomChoiceWithoutRepeat(rand, atoms, randomInt(rand, 1, atoms.length));
+      let dict_values = keys.map(v => doPair(doAtom(v), randomSexpr(4)));
+      let selected = randomChoice(rand, dict_values);
+      return [doPair(
+        doAtom('1'),
+        doPair(
+          doList(dict_values),
+          selected.left
+        )
+      ), selected.right]
+    }
+  )
 ];
+
+function randomInt(rand: Rand, low_inclusive: number, high_exclusive: number): number {
+    return low_inclusive + Math.floor(rand.next() * (high_exclusive - low_inclusive));
+}
+
+function randomChoiceWithoutRepeat<T>(rand: Rand, arr: T[], count: number) {
+  if (count > arr.length) {
+    throw new Error("array too small or count too big");
+  }
+  let result: T[] = [];
+  while (result.length < count) {
+    let cur = randomChoice(rand, arr);
+    if (!result.includes(cur)) {
+      result.push(cur);
+    }
+  }
+  return result;
+}
 
 function randomChoice<T>(rand: Rand, arr: T[]) {
   if (arr.length === 0) {
