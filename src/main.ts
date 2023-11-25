@@ -760,7 +760,94 @@ let levels: Level[] = [
         )
       ), selected.right]
     }
-  )
+  ),
+  new Level(
+    "cadadar_easy",
+    [],
+    (rand) => {
+      const atoms = ['5', '6', '7', '8'];
+      function randomSexpr(max_depth: number, must_have: Address): Sexpr {
+        if (max_depth < must_have.length) throw new Error("");
+        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        if (must_have.length === 0) {
+          return doPair(
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+          );
+        }
+        let next_is_left = must_have[0];
+        let rest = must_have.slice(1);
+        if (next_is_left) {
+          return doPair(
+            randomSexpr(Math.max(rest.length, Math.floor(rand.next() * max_depth)), rest),
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+          );
+        } else {
+          return doPair(
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+            randomSexpr(Math.max(rest.length, Math.floor(rand.next() * max_depth)), rest),
+          );
+        }
+      }
+      let address = fromCount(randomInt(rand, 0, 4), _ => rand.next() < .5);
+      let asdf = randomSexpr(Math.max(address.length, randomInt(rand, 0, 5)), address);
+      let result = getAtAddress(asdf, address);
+      return [
+        doPair(
+          doAtom('1'),
+          doPair(
+            doList(address.map(v => doAtom(v ? '2' : '3'))),
+            asdf
+          )
+        ),
+        result
+      ];
+    }
+  ),
+  new Level(
+    "cadadar_hard",
+    [],
+    (rand) => {
+      const atoms = ['5', '6', '7', '8'];
+      function randomSexpr(max_depth: number, must_have: Address): Sexpr {
+        if (max_depth < must_have.length) throw new Error("");
+        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        if (must_have.length === 0) {
+          return doPair(
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+          );
+        }
+        let next_is_left = must_have[0];
+        let rest = must_have.slice(1);
+        if (next_is_left) {
+          return doPair(
+            randomSexpr(Math.max(rest.length, Math.floor(rand.next() * max_depth)), rest),
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+          );
+        } else {
+          return doPair(
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+            randomSexpr(Math.max(rest.length, Math.floor(rand.next() * max_depth)), rest),
+          );
+        }
+      }
+      let address = fromCount(randomInt(rand, 0, 4), _ => rand.next() < .5);
+      let asdf = randomSexpr(Math.max(address.length, randomInt(rand, 0, 5)), address);
+      let result = getAtAddress(asdf, address);
+      let problem = asdf;
+      reversedForEach(address, v => {
+        problem = doPair(doAtom(v ? '2': '3'), problem);
+      });
+      return [
+        doPair(
+          doAtom('1'),
+          problem
+        ),
+        result
+      ];
+    }
+  ),
 ];
 
 function randomInt(rand: Rand, low_inclusive: number, high_exclusive: number): number {
