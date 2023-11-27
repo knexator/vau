@@ -1,5 +1,5 @@
 import GUI from "lil-gui";
-import { Input, KeyCode, MouseButton } from "./kommon/input";
+import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
 import { DefaultMap, eqArrays, findIndex, fromCount, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05 } from "./kommon/math";
@@ -897,6 +897,21 @@ function makePeanoSexpr(n: number): Sexpr {
   return result;
 }
 
+function button(text: string, rect: Rectangle): boolean {
+  let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
+  let pressed = false;
+  if (rect.contains(mouse_pos)) {
+    ctx.fillStyle = "#BBBBBB";
+    pressed = input.mouse.wasPressed(MouseButton.Left);
+  } else {
+    ctx.fillStyle = "#444444";
+  }
+  fillRect(ctx, rect);
+  ctx.fillStyle = "black";
+  fillText(ctx, text, rect.getCenter());
+  return pressed;
+}
+
 let last_timestamp = 0;
 // main loop; game logic lives here
 function every_frame(cur_timestamp: number) {
@@ -936,49 +951,20 @@ function menu_frame(delta_time: number) {
   ctx.stroke();
 
   for (let k = 0; k < levels.length; k++) {
-    let button_rect = new Rectangle(new Vec2(50 + mod(k, 4) * 100, 50 + Math.floor(k / 4) * 100), Vec2.both(50));
-    if (button_rect.contains(mouse_pos)) {
-      ctx.fillStyle = "#BBBBBB";
-      if (input.mouse.wasPressed(MouseButton.Left)) {
-        selected_level_index = k;
-      }
-    } else if (k === selected_level_index) {
-      ctx.fillStyle = "#999999";
-    } else {
-      ctx.fillStyle = "#444444";
+    if (button(k.toString(), new Rectangle(new Vec2(50 + mod(k, 4) * 100, 50 + Math.floor(k / 4) * 100), Vec2.both(50)))) {
+      selected_level_index = k;
     }
-    fillRect(ctx, button_rect);
   }
 
   if (selected_level_index !== null) {
     let level = levels[selected_level_index]
-    {
-      // menu sample select
-      let prev_rect = new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25));
-      if (prev_rect.contains(mouse_pos)) {
-        ctx.fillStyle = "#BBBBBB";
-        if (input.mouse.wasPressed(MouseButton.Left)) {
-          selected_menu_test -= 1;
-        }
-      } else {
-        ctx.fillStyle = "#444444";
-      }
-      fillRect(ctx, prev_rect);
-      ctx.fillStyle = "black";
-      fillText(ctx, '<', prev_rect.getCenter());
+    // menu sample select
+    if (button('<', new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25)))) {
+      selected_menu_test -= 1;
+    }
 
-      let next_rect = Rectangle.fromParams({ topRight: canvas_size.mul(new Vec2(.75 - .02, .0)), size: new Vec2(canvas_size.x * .05, 25) });
-      if (next_rect.contains(mouse_pos)) {
-        ctx.fillStyle = "#BBBBBB";
-        if (input.mouse.wasPressed(MouseButton.Left)) {
-          selected_menu_test += 1;
-        }
-      } else {
-        ctx.fillStyle = "#444444";
-      }
-      fillRect(ctx, next_rect);
-      ctx.fillStyle = "black";
-      fillText(ctx, '>', next_rect.getCenter());
+    if (button('>', Rectangle.fromParams({ topRight: canvas_size.mul(new Vec2(.75 - .02, .0)), size: new Vec2(canvas_size.x * .05, 25) }))) {
+      selected_menu_test += 1;
     }
     let rand = new Rand(`menu_sample_${level.id}_${selected_menu_test}`);
     const origin_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.4, .2)), halfside: canvas.height / 8 };
@@ -988,39 +974,22 @@ function menu_frame(delta_time: number) {
     drawMolecule(target, target_molecule_view);
 
     level.user_slots.forEach((slot, k) => {
-      let slot_rect = new Rectangle(new Vec2(canvas_size.x * .75, k * 75), new Vec2(canvas_size.x * .25, 50));
-      if (slot_rect.contains(mouse_pos)) {
-        ctx.fillStyle = "#BBBBBB";
-        if (input.mouse.wasPressed(MouseButton.Left)) {
-          STATE = "game";
-          cur_level = level;
-          cur_vaus = slot.vaus;
-          cur_vau_index = 0;
-          cur_test_case = 0;
-          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
-          return;
-        }
-      } else {
-        ctx.fillStyle = "#444444";
+      if (button(slot.name, new Rectangle(new Vec2(canvas_size.x * .75, k * 75), new Vec2(canvas_size.x * .25, 50)))) {
+
+        STATE = "game";
+        cur_level = level;
+        cur_vaus = slot.vaus;
+        cur_vau_index = 0;
+        cur_test_case = 0;
+        [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+        return;
       }
-      fillRect(ctx, slot_rect);
-      ctx.fillStyle = "black";
-      fillText(ctx, slot.name, slot_rect.getCenter());
     });
 
     {
-      let slot_rect = new Rectangle(new Vec2(canvas_size.x * .75, level.user_slots.length * 75), new Vec2(canvas_size.x * .25, 50));
-      if (slot_rect.contains(mouse_pos)) {
-        ctx.fillStyle = "#BBBBBB";
-        if (input.mouse.wasPressed(MouseButton.Left)) {
-          level.user_slots.push({ name: `Solution ${level.user_slots.length}`, vaus: [] });
-        }
-      } else {
-        ctx.fillStyle = "#444444";
+      if (button("New solution", new Rectangle(new Vec2(canvas_size.x * .75, level.user_slots.length * 75), new Vec2(canvas_size.x * .25, 50)))) {
+        level.user_slots.push({ name: `Solution ${level.user_slots.length}`, vaus: [] });
       }
-      fillRect(ctx, slot_rect);
-      ctx.fillStyle = "black";
-      fillText(ctx, "New solution", slot_rect.getCenter());
     }
   }
 }
@@ -1165,52 +1134,30 @@ function game_frame(delta_time: number) {
   const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   {
     // menu button
-    let menu_rect = new Rectangle(new Vec2(canvas_size.x * .85, 0), new Vec2(canvas_size.x * .15, canvas_size.x * .1));
-    if (menu_rect.contains(mouse_pos)) {
-      ctx.fillStyle = "#BBBBBB";
-      if (input.mouse.wasPressed(MouseButton.Left)) {
-        save_cur_level();
-        STATE = "menu"
-        return;
-      }
-    } else {
-      ctx.fillStyle = "#444444";
+    if (button("Menu", new Rectangle(new Vec2(canvas_size.x * .85, 0), new Vec2(canvas_size.x * .15, canvas_size.x * .1)))) {
+      save_cur_level();
+      STATE = "menu"
+      return;
     }
-    fillRect(ctx, menu_rect);
-    ctx.fillStyle = "black";
-    fillText(ctx, "Menu", menu_rect.getCenter());
   }
+
   {
     // select test case
     if (cur_test_case > 0) {
-      let rect_prev = Rectangle.fromParams({ bottomLeft: new Vec2(0, canvas.height), size: new Vec2(50, 50) });
-      if (rect_prev.contains(mouse_pos)) {
-        ctx.fillStyle = "#BBBBBB";
-        if (input.mouse.wasPressed(MouseButton.Left)) {
-          cur_test_case -= 1;
-          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
-        }
-      } else {
-        ctx.fillStyle = "#444444";
+      if (button('<', Rectangle.fromParams({ bottomLeft: new Vec2(0, canvas.height), size: new Vec2(50, 50) }))) {
+        cur_test_case -= 1;
+        [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
       }
-      fillRect(ctx, rect_prev);
     }
+    if (button('>', Rectangle.fromParams({ bottomLeft: new Vec2(150, canvas.height), size: new Vec2(50, 50) }))) {
+      cur_test_case += 1;
+      [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+    }
+
     ctx.fillStyle = "black";
     fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, canvas.height - 25));
-    {
-      let rect_next = Rectangle.fromParams({ bottomLeft: new Vec2(150, canvas.height), size: new Vec2(50, 50) });
-      if (rect_next.contains(mouse_pos)) {
-        ctx.fillStyle = "#BBBBBB";
-        if (input.mouse.wasPressed(MouseButton.Left)) {
-          cur_test_case += 1;
-          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
-        }
-      } else {
-        ctx.fillStyle = "#444444";
-      }
-      fillRect(ctx, rect_next);
-    }
   }
+
   let cur_mouse_place: MoleculePlace;
   {
     const molecule_mouse_path = moleculeAdressFromScreenPosition(
