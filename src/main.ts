@@ -69,6 +69,12 @@ if (DEBUG) {
   // gui.hide();
 }
 
+function myFillText(ctx: CanvasRenderingContext2D, text: string, pos: Vec2) {
+  text.split('\n').forEach((line, k) => {
+    ctx.fillText(line, pos.x, pos.y + k * 30);
+  })
+}
+
 function fillText(ctx: CanvasRenderingContext2D, text: string, pos: Vec2) {
   ctx.fillText(text, pos.x, pos.y);
 }
@@ -619,6 +625,7 @@ function doAtom(value: string): Atom {
 class Level {
   constructor(
     public id: string,
+    public description: string,
     public generate_test: (rand: Rand) => [Sexpr, Sexpr],
     public user_slots: SolutionSlot[] = [],
   ) { }
@@ -646,6 +653,7 @@ let cur_level: Level;
 let levels: Level[] = [
   new Level(
     "anyred",
+    "Spike Detector:\nSome of our neutral samples have been\ncontaminated with spiky proteins,\nmake a detector for any spiky bits.",
     (rand) => {
       let final_has_red = rand.next() > .5;
       function helper(has_red: boolean, depth: number): Sexpr {
@@ -672,6 +680,7 @@ let levels: Level[] = [
   ),
   new Level(
     "add",
+    "Peano Addition:\nWe can represent any natural number as\na list of ones! Make a vau to add them.",
     (rand) => {
       let n1 = Math.floor(rand.next() * 6);
       let n2 = Math.floor(rand.next() * 6);
@@ -683,6 +692,7 @@ let levels: Level[] = [
   ),
   new Level(
     "reverse",
+    "List Reverse:\nReverse the given nil-terminated list.",
     (rand) => {
       const atoms = ['4', '5', '6', '7', '8'];
       function randomSexpr(max_depth: number): Sexpr {
@@ -704,6 +714,7 @@ let levels: Level[] = [
   ),
   new Level(
     "equal",
+    "Equality Check:\nReturn spiky only if both molecules are equal.",
     (rand) => {
       let generate_equal = rand.next() > .5;
       const atoms = ['4', '5', '6'];
@@ -735,6 +746,7 @@ let levels: Level[] = [
   ),
   new Level(
     "lookup",
+    "Lookup Table:\nGiven a list of (key, value) pairs and a key,\nreturn the value associated with it.",
     (rand) => {
       const atoms = ['4', '5', '6', '7', '8'];
       function randomSexpr(max_depth: number): Sexpr {
@@ -758,6 +770,7 @@ let levels: Level[] = [
   ),
   new Level(
     "cadadar_easy",
+    "CADADADAR easy",
     (rand) => {
       const atoms = ['5', '6', '7', '8'];
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
@@ -800,6 +813,7 @@ let levels: Level[] = [
   ),
   new Level(
     "cadadar_hard",
+    "CADADADAR hard",
     (rand) => {
       const atoms = ['5', '6', '7', '8'];
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
@@ -951,6 +965,9 @@ function menu_frame(delta_time: number) {
 
   if (selected_level_index !== null) {
     let level = levels[selected_level_index]
+
+    myFillText(ctx, level.description, canvas_size.mul(new Vec2(lerp(1/3, 3/4, .5), .5)));
+
     // menu sample select
     if (button('<', new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25)))) {
       selected_menu_test -= 1;
