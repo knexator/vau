@@ -619,8 +619,8 @@ function doAtom(value: string): Atom {
 class Level {
   constructor(
     public id: string,
-    public user_slots: SolutionSlot[],
-    public generate_test: (rand: Rand) => [Sexpr, Sexpr]
+    public generate_test: (rand: Rand) => [Sexpr, Sexpr],
+    public user_slots: SolutionSlot[] = [],
   ) { }
 
   get_test(n: number) {
@@ -646,7 +646,6 @@ let cur_level: Level;
 let levels: Level[] = [
   new Level(
     "anyred",
-    [],
     (rand) => {
       let final_has_red = rand.next() > .5;
       function helper(has_red: boolean, depth: number): Sexpr {
@@ -673,7 +672,6 @@ let levels: Level[] = [
   ),
   new Level(
     "add",
-    [],
     (rand) => {
       let n1 = Math.floor(rand.next() * 6);
       let n2 = Math.floor(rand.next() * 6);
@@ -685,7 +683,6 @@ let levels: Level[] = [
   ),
   new Level(
     "reverse",
-    [],
     (rand) => {
       const atoms = ['4', '5', '6', '7', '8'];
       function randomSexpr(max_depth: number): Sexpr {
@@ -707,7 +704,6 @@ let levels: Level[] = [
   ),
   new Level(
     "equal",
-    [],
     (rand) => {
       let generate_equal = rand.next() > .5;
       const atoms = ['4', '5', '6'];
@@ -739,7 +735,6 @@ let levels: Level[] = [
   ),
   new Level(
     "lookup",
-    [],
     (rand) => {
       const atoms = ['4', '5', '6', '7', '8'];
       function randomSexpr(max_depth: number): Sexpr {
@@ -763,7 +758,6 @@ let levels: Level[] = [
   ),
   new Level(
     "cadadar_easy",
-    [],
     (rand) => {
       const atoms = ['5', '6', '7', '8'];
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
@@ -806,7 +800,6 @@ let levels: Level[] = [
   ),
   new Level(
     "cadadar_hard",
-    [],
     (rand) => {
       const atoms = ['5', '6', '7', '8'];
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
