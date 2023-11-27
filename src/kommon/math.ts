@@ -281,6 +281,7 @@ export class Rectangle {
         bottomRight?: Vec2,
         bottomLeft?: Vec2,
         size?: Vec2,
+        topRight?: Vec2,
     }): Rectangle {
         // let size = new Vec2();
         // let topLeft = new Vec2();
@@ -310,6 +311,12 @@ export class Rectangle {
         } else if (params.bottomLeft !== undefined) {
             if (params.size !== undefined) {
                 return new Rectangle(params.bottomLeft.subY(params.size.y), params.size); 
+            } else {
+                throw new Error("unimplemented");
+            }
+        } else if (params.topRight !== undefined) {
+            if (params.size !== undefined) {
+                return new Rectangle(params.topRight.subX(params.size.x), params.size); 
             } else {
                 throw new Error("unimplemented");
             }

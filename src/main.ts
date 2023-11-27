@@ -639,7 +639,7 @@ type SolutionSlot = {
 // } | { type: "game" } = { type: "menu", selected_level_index: null, selected_solution_slot: null };
 let STATE: "menu" | "game" = "menu";
 let selected_level_index: number | null = null;
-let selected_solution_slot: number | null = null;
+let selected_menu_test: number = 0
 
 let cur_level: Level;
 
@@ -952,14 +952,40 @@ function menu_frame(delta_time: number) {
 
   if (selected_level_index !== null) {
     let level = levels[selected_level_index]
-    let rand = new Rand(`menu_sample_${level.id}`);
-    [.2, .5, .8].forEach(y => {
-      const origin_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.4, y)), halfside: canvas.height / 8 };
-      const target_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.6, y)), halfside: canvas.height / 8 }
-      const [origin, target] = level.generate_test(rand);
-      drawMolecule(origin, origin_molecule_view);
-      drawMolecule(target, target_molecule_view);
-    });
+    {
+      // menu sample select
+      let prev_rect = new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25));
+      if (prev_rect.contains(mouse_pos)) {
+        ctx.fillStyle = "#BBBBBB";
+        if (input.mouse.wasPressed(MouseButton.Left)) {
+          selected_menu_test -= 1;
+        }
+      } else {
+        ctx.fillStyle = "#444444";
+      }
+      fillRect(ctx, prev_rect);
+      ctx.fillStyle = "black";
+      fillText(ctx, '<', prev_rect.getCenter());
+
+      let next_rect = Rectangle.fromParams({ topRight: canvas_size.mul(new Vec2(.75 - .02, .0)), size: new Vec2(canvas_size.x * .05, 25) });
+      if (next_rect.contains(mouse_pos)) {
+        ctx.fillStyle = "#BBBBBB";
+        if (input.mouse.wasPressed(MouseButton.Left)) {
+          selected_menu_test += 1;
+        }
+      } else {
+        ctx.fillStyle = "#444444";
+      }
+      fillRect(ctx, next_rect);
+      ctx.fillStyle = "black";
+      fillText(ctx, '>', next_rect.getCenter());
+    }
+    let rand = new Rand(`menu_sample_${level.id}_${selected_menu_test}`);
+    const origin_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.4, .2)), halfside: canvas.height / 8 };
+    const target_molecule_view: MoleculeView = { pos: canvas_size.mul(new Vec2(.6, .2)), halfside: canvas.height / 8 }
+    const [origin, target] = level.generate_test(rand);
+    drawMolecule(origin, origin_molecule_view);
+    drawMolecule(target, target_molecule_view);
 
     level.user_slots.forEach((slot, k) => {
       let slot_rect = new Rectangle(new Vec2(canvas_size.x * .75, k * 75), new Vec2(canvas_size.x * .25, 50));
