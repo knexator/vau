@@ -836,7 +836,7 @@ let levels: Level[] = [
       let asdf = randomSexpr(Math.max(address.length, randomInt(rand, 0, 5)), address);
       let result = getAtAddress(asdf, address);
       let problem = asdf;
-      reversedForEach(address, v => {
+      address.forEach(v => {
         problem = doPair(doAtom(v ? '2': '3'), problem);
       });
       return [
