@@ -837,7 +837,7 @@ let levels: Level[] = [
       let result = getAtAddress(asdf, address);
       let problem = asdf;
       address.forEach(v => {
-        problem = doPair(doAtom(v ? '2': '3'), problem);
+        problem = doPair(doAtom(v ? '2' : '3'), problem);
       });
       return [
         doPair(
@@ -936,7 +936,7 @@ function menu_frame(delta_time: number) {
   ctx.stroke();
 
   for (let k = 0; k < levels.length; k++) {
-    let button_rect = new Rectangle(new Vec2(50, 50 + k * 100), Vec2.both(50));
+    let button_rect = new Rectangle(new Vec2(50 + mod(k, 7) * 100, 50 + Math.floor(k / 7) * 100), Vec2.both(50));
     if (button_rect.contains(mouse_pos)) {
       ctx.fillStyle = "#BBBBBB";
       if (input.mouse.wasPressed(MouseButton.Left)) {
