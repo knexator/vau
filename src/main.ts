@@ -1,7 +1,7 @@
 import GUI from "lil-gui";
 import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
-import { DefaultMap, eqArrays, findIndex, fromCount, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
+import { DefaultMap, eqArrays, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05 } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
@@ -679,6 +679,25 @@ let levels: Level[] = [
     }
   ),
   new Level(
+    "switch",
+    "Switcheroo",
+    (rand) => {
+      let atoms = fromCount(4, k => doAtom((2 + k).toString()));
+      let v1 = makeRandomSexpr(rand, 4, atoms);
+      let v2 = makeRandomSexpr(rand, 4, atoms);
+      return [
+        doPair(
+          doAtom("0"),
+          doPair(v1, v2)
+        ),
+        doPair(
+          doAtom("1"),
+          doPair(v2, v1)
+        ),
+      ];
+    },
+  ),
+  new Level(
     "add",
     "Peano Addition:\nWe can represent any natural number as\na list of ones! Make a vau to add them.",
     (rand) => {
@@ -904,6 +923,17 @@ function makePeanoSexpr(n: number): Sexpr {
   return result;
 }
 
+function makeRandomSexpr(rand: Rand, max_depth: number, pieces: Atom[]): Sexpr {
+  if (max_depth == 0 || rand.next() < .2) {
+    return randomChoice(rand, pieces);
+  } else {
+    return doPair(
+      makeRandomSexpr(rand, randomInt(rand, 0, max_depth), pieces),
+      makeRandomSexpr(rand, randomInt(rand, 0, max_depth), pieces)
+    );
+  }
+}
+
 function button(text: string, rect: Rectangle): boolean {
   let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   let pressed = false;
@@ -966,7 +996,7 @@ function menu_frame(delta_time: number) {
   if (selected_level_index !== null) {
     let level = levels[selected_level_index]
 
-    myFillText(ctx, level.description, canvas_size.mul(new Vec2(lerp(1/3, 3/4, .5), .5)));
+    myFillText(ctx, level.description, canvas_size.mul(new Vec2(lerp(1 / 3, 3 / 4, .5), .5)));
 
     // menu sample select
     if (button('<', new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25)))) {
