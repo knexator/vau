@@ -2,7 +2,7 @@ import GUI from "lil-gui";
 import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
 import { DefaultMap, eqArrays, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
-import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05 } from "./kommon/math";
+import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap, clamp } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
 
@@ -110,6 +110,13 @@ const base_vau_view: VauView = {
   pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
   halfside: 150,
 };
+
+let animation_state: {
+  animating_vau_view: Anim<VauView>,
+  transformed_base_molecule: Sexpr,
+  molecule_fade: number
+  new_molecule_opacity: number
+} | null = null;
 
 const top_vau_view: VauView = { pos: base_vau_view.pos.subY(canvas_size.y * .5), halfside: base_vau_view.halfside };
 const bottom_vau_view: VauView = { pos: base_vau_view.pos.addY(canvas_size.y * .5), halfside: base_vau_view.halfside };
@@ -333,6 +340,14 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
   }
 }
 
+function drawMoleculeDuringAnimation(data: Sexpr, view: MoleculeView) {
+  // TODO: don't assume the address of the replaced thing
+  if (animation_state === null) throw new Error("");
+  ctx.globalAlpha = 1 - animation_state.molecule_fade;
+  drawMolecule(data, view);
+  ctx.globalAlpha = 1;
+}
+
 function drawMoleculeHighlight(view: MoleculeView, color: string) {
   ctx.beginPath();
   ctx.strokeStyle = color;
@@ -424,8 +439,17 @@ function matcherAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: Va
 
 type VauView = { pos: Vec2, halfside: number };
 function drawVau(data: Pair, view: VauView) {
-  drawMatcher(data.left, view);
-  drawMolecule(data.right, getVauMoleculeView(view));
+  if (animation_state !== null) {
+    ctx.globalAlpha = 1 - animation_state.molecule_fade;
+    drawMatcher(data.left, view);
+    ctx.globalAlpha = animation_state.new_molecule_opacity;
+    drawMolecule(animation_state.transformed_base_molecule, getVauMoleculeView(view));
+    ctx.globalAlpha = 1;
+    drawMolecule(data.right, getVauMoleculeView(view));
+  } else {
+    drawMatcher(data.left, view);
+    drawMolecule(data.right, getVauMoleculeView(view));
+  }
 }
 
 function getVauMoleculeView(view: VauView): MoleculeView {
@@ -1153,14 +1177,67 @@ function game_frame(delta_time: number) {
         }
       }
     }
+  } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
+    // same as Z but with animation
+    const new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+    if (new_molecule !== null) {
+      animation_state = {
+        molecule_fade: 0,
+        new_molecule_opacity: 0,
+        animating_vau_view: {
+          progress: 0,
+          duration: 3,
+          callback: t => {
+            if (t < 1 / 3) {
+              t = remap(t, 0, 1 / 3, 0, 1);
+              animation_state!.new_molecule_opacity = clamp(remap(t, .5,1,0,1), 0, 1);
+              return {
+                halfside: base_vau_view.halfside,
+                pos: Vec2.lerp(base_vau_view.pos, base_molecule_view.pos.addX(base_molecule_view.halfside * 3), t),
+              };
+            } else if (t < 2 / 3) {
+              t = remap(t, 1 / 3, 2 / 3, 0, 1);
+              animation_state!.molecule_fade = t;
+              return {
+                halfside: base_vau_view.halfside,
+                pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3),
+              };
+            } else {
+              let start_vau_view: VauView = {
+                halfside: base_vau_view.halfside,
+                pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3),
+              };
+              // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
+              t = remap(t, 2 / 3, 1, 0, 1);
+              return {
+                halfside: base_vau_view.halfside,
+                pos: Vec2.lerp(start_vau_view.pos, base_molecule_view.pos.sub(new Vec2(spike_perc * base_vau_view.halfside / 2, base_vau_view.halfside / 2)), t),
+              };
+            }
+          }
+        },
+        transformed_base_molecule: setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule),
+      };
+    }
   }
 
 
   ctx.lineWidth = 2;
-  drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
+  if (animation_state === null) {
+    drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
+  } else {
+    drawMoleculeDuringAnimation(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
+  }
   drawMolecule(cur_target, target_view);
-
-  drawVau(cur_vau, base_vau_view);
+  if (animation_state !== null) {
+    drawVau(cur_vau, advanceAnim(animation_state.animating_vau_view, delta_time));
+    if (animation_state.animating_vau_view.progress >= 1) {
+      cur_base_molecule = animation_state.transformed_base_molecule;
+      animation_state = null;
+    }
+  } else {
+    drawVau(cur_vau, base_vau_view);
+  }
   if (cur_vau_index > 0) {
     drawVau(cur_vaus[cur_vau_index - 1], top_vau_view);
   }
