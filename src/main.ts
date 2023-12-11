@@ -117,6 +117,7 @@ let animation_state: {
   molecule_fade: number,
   new_molecule_opacity: number,
   vau_molecule_opacity: number,
+  molecule_address: Address,
 } | null = null;
 
 const top_vau_view: VauView = { pos: base_vau_view.pos.subY(canvas_size.y * .5), halfside: base_vau_view.halfside };
@@ -283,7 +284,7 @@ const colorFromAtom: (atom: string) => Color = (() => {
 })();
 
 type MoleculeView = { pos: Vec2, halfside: number };
-function drawMolecule(data: Sexpr, view: MoleculeView) {
+function drawMoleculeNonRecursive(data: Sexpr, view: MoleculeView) {
   if (data.type === "atom") {
     if (data.value[0] === "@") {
       ctx.beginPath();
@@ -336,22 +337,33 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+  }
+}
 
+function drawMolecule(data: Sexpr, view: MoleculeView) {
+  drawMoleculeNonRecursive(data, view);
+  if (data.type === "pair") {
     drawMolecule(data.left, getChildView(view, true));
     drawMolecule(data.right, getChildView(view, false));
   }
 }
 
-function drawMoleculeDuringAnimation(data: Sexpr, view: MoleculeView) {
-  // TODO: don't assume the address of the replaced thing
+function drawMoleculeDuringAnimation(data: Sexpr, view: MoleculeView, address: Address) {
   if (animation_state === null) throw new Error("");
-  ctx.globalAlpha = 1 - animation_state.molecule_fade;
-  console.log(ctx.globalAlpha);
-  drawMolecule(data, {
-    pos: view.pos.subY(animation_state.molecule_fade * base_vau_view.halfside / 2),
-    halfside: view.halfside,
-  });
-  ctx.globalAlpha = 1;
+  if (eqArrays(address, animation_state.molecule_address)) {
+    ctx.globalAlpha = 1 - animation_state.molecule_fade;
+    drawMolecule(data, {
+      pos: view.pos.subY(animation_state.molecule_fade * base_vau_view.halfside / 2),
+      halfside: view.halfside,
+    });
+    ctx.globalAlpha = 1;
+  } else {
+    drawMoleculeNonRecursive(data, view);
+    if (data.type === "pair") {
+      drawMoleculeDuringAnimation(data.left, getChildView(view, true), [...address, true]);
+      drawMoleculeDuringAnimation(data.right, getChildView(view, false), [...address, false]);
+    }
+  }
 }
 
 function drawMoleculeHighlight(view: MoleculeView, color: string) {
@@ -449,7 +461,7 @@ function drawVau(data: Pair, view: VauView) {
     ctx.globalAlpha = 1 - animation_state.molecule_fade;
     drawMatcher(data.left, view);
     ctx.globalAlpha = animation_state.new_molecule_opacity;
-    drawMolecule(animation_state.transformed_base_molecule, getVauMoleculeView(view));
+    drawMolecule(getAtAddress(animation_state.transformed_base_molecule, animation_state.molecule_address), getVauMoleculeView(view));
     ctx.globalAlpha = animation_state.vau_molecule_opacity;
     drawMolecule(data.right, getVauMoleculeView(view));
     ctx.globalAlpha = 1;
@@ -1193,13 +1205,14 @@ function game_frame(delta_time: number) {
         molecule_fade: 0,
         new_molecule_opacity: 0,
         vau_molecule_opacity: 1,
+        molecule_address: cur_molecule_address,
         animating_vau_view: {
           progress: 0,
           duration: 3,
           callback: t => {
             if (t < 1 / 3) {
               t = remap(t, 0, 1 / 3, 0, 1);
-              animation_state!.new_molecule_opacity = clamp(remap(t, .5,1,0,1), 0, 1);
+              animation_state!.new_molecule_opacity = clamp(remap(t, .5, 1, 0, 1), 0, 1);
               return {
                 halfside: base_vau_view.halfside,
                 pos: Vec2.lerp(base_vau_view.pos, base_molecule_view.pos.addX(base_molecule_view.halfside * 3), t),
@@ -1236,7 +1249,7 @@ function game_frame(delta_time: number) {
   if (animation_state === null) {
     drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
   } else {
-    drawMoleculeDuringAnimation(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
+    drawMoleculeDuringAnimation(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time), []);
   }
   drawMolecule(cur_target, target_view);
   if (animation_state !== null) {
