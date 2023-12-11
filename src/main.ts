@@ -118,8 +118,8 @@ let animation_state: {
   new_molecule_opacity: number,
   vau_molecule_opacity: number,
   molecule_address: Address,
-  bindings: Binding[],
-  floating_binds: null | 'TODO',
+  // bindings: Binding[],
+  floating_binds: null | { binding: Binding, view: Anim<MoleculeView> }[],
 } | null = null;
 
 const top_vau_view: VauView = { pos: base_vau_view.pos.subY(canvas_size.y * .5), halfside: base_vau_view.halfside };
@@ -215,6 +215,21 @@ function generateBindings(molecule: Sexpr, template: Sexpr, address: Address = [
         return left_match.concat(right_match);
       }
     }
+  }
+}
+
+function findBindingTargets(template: Sexpr, binding: Binding, cur_address: Address): Address[] {
+  if (template.type === "atom") {
+    if (template.value[0] === "@" && binding.name === template.value) {
+      return [cur_address];
+    } else {
+      return [];
+    }
+  } else {
+    return [
+      ...findBindingTargets(template.left, binding, [...cur_address, true]),
+      ...findBindingTargets(template.right, binding, [...cur_address, false])
+    ];
   }
 }
 
@@ -370,7 +385,7 @@ function drawMoleculeDuringAnimation(data: Sexpr, view: MoleculeView, address: A
     drawMoleculeExceptFor(data, {
       pos: view.pos.subY(animation_state.molecule_fade * base_vau_view.halfside / 2),
       halfside: view.halfside,
-    }, (animation_state.floating_binds === null) ? [] : animation_state.bindings.map(x => x.address), address);
+    }, (animation_state.floating_binds === null) ? [] : animation_state.floating_binds.map(x => x.binding.address), address);
     ctx.globalAlpha = 1;
   } else {
     drawMoleculeNonRecursive(data, view);
@@ -1278,6 +1293,12 @@ function game_frame(delta_time: number) {
     // same as X (cur vau, whole molecule) but with animation
     const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
     if (bind_result !== null) {
+      let bind_targets = bind_result.bindings.map(b => {
+        return {
+          binding: b,
+          targets: findBindingTargets(cur_vau.right, b, []),
+        }
+      });
       let old_address = cur_molecule_address;
       cur_molecule_address = [...cur_molecule_address, ...bind_result.bound_at];
       cur_molecule_view.updateTarget();
@@ -1286,7 +1307,6 @@ function game_frame(delta_time: number) {
         new_molecule_opacity: 0,
         vau_molecule_opacity: 1,
         molecule_address: cur_molecule_address,
-        bindings: bind_result.bindings,
         floating_binds: null,
         animating_vau_view: {
           progress: 0,
@@ -1304,7 +1324,22 @@ function game_frame(delta_time: number) {
               t = remap(t, 1 / 3, 2 / 3, 0, 1);
               animation_state.molecule_fade = t;
               if (animation_state.floating_binds === null) {
-                animation_state.floating_binds = 'TODO';
+                animation_state.floating_binds = bind_result.bindings.flatMap(b => {
+                  return bind_targets.find(x => x.binding === b)!.targets.map(target => {
+                    return {
+                      binding: b,
+                      view: makeLerpAnim(
+                        getGrandchildView(base_molecule_view, b.address),
+                        getGrandchildView({
+                          pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3.25),
+                          halfside: base_molecule_view.halfside,
+                        }, target),
+                        .9,
+                        lerpMoleculeViews
+                      )
+                    };
+                  });
+                })
               }
               return {
                 halfside: base_vau_view.halfside,
@@ -1315,6 +1350,7 @@ function game_frame(delta_time: number) {
                 halfside: base_vau_view.halfside,
                 pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -base_vau_view.halfside / 2)),
               };
+              animation_state.floating_binds = null;
               // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
               t = remap(t, 2 / 3, 1, 0, 1);
               animation_state.vau_molecule_opacity = 1 - t;
@@ -1340,6 +1376,12 @@ function game_frame(delta_time: number) {
   drawMolecule(cur_target, target_view);
   if (animation_state !== null) {
     drawVau(cur_vau, advanceAnim(animation_state.animating_vau_view, delta_time));
+    if (animation_state.floating_binds !== null) {
+      animation_state.floating_binds.forEach(({ binding, view }) => {
+        drawMolecule(binding.value, advanceAnim(view, delta_time));
+        drawMolecule(doAtom(binding.name), advanceAnim(view, 0));
+      })
+    }
     if (animation_state.animating_vau_view.progress >= 1) {
       cur_base_molecule = animation_state.transformed_base_molecule;
       animation_state = null;
