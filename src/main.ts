@@ -114,8 +114,9 @@ const base_vau_view: VauView = {
 let animation_state: {
   animating_vau_view: Anim<VauView>,
   transformed_base_molecule: Sexpr,
-  molecule_fade: number
-  new_molecule_opacity: number
+  molecule_fade: number,
+  new_molecule_opacity: number,
+  vau_molecule_opacity: number,
 } | null = null;
 
 const top_vau_view: VauView = { pos: base_vau_view.pos.subY(canvas_size.y * .5), halfside: base_vau_view.halfside };
@@ -286,7 +287,8 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
   if (data.type === "atom") {
     if (data.value[0] === "@") {
       ctx.beginPath();
-      ctx.globalAlpha = .5;
+      let prev_alpha = ctx.globalAlpha;
+      ctx.globalAlpha = .5 * prev_alpha;
       ctx.fillStyle = colorFromAtom(data.value.slice(1)).toHex();
       moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-view.halfside));
@@ -296,7 +298,7 @@ function drawMolecule(data: Sexpr, view: MoleculeView) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = prev_alpha;
     } else {
       let profile = atom_shapes.get(data.value);
       ctx.beginPath();
@@ -344,7 +346,11 @@ function drawMoleculeDuringAnimation(data: Sexpr, view: MoleculeView) {
   // TODO: don't assume the address of the replaced thing
   if (animation_state === null) throw new Error("");
   ctx.globalAlpha = 1 - animation_state.molecule_fade;
-  drawMolecule(data, view);
+  console.log(ctx.globalAlpha);
+  drawMolecule(data, {
+    pos: view.pos.subY(animation_state.molecule_fade * base_vau_view.halfside / 2),
+    halfside: view.halfside,
+  });
   ctx.globalAlpha = 1;
 }
 
@@ -444,8 +450,9 @@ function drawVau(data: Pair, view: VauView) {
     drawMatcher(data.left, view);
     ctx.globalAlpha = animation_state.new_molecule_opacity;
     drawMolecule(animation_state.transformed_base_molecule, getVauMoleculeView(view));
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = animation_state.vau_molecule_opacity;
     drawMolecule(data.right, getVauMoleculeView(view));
+    ctx.globalAlpha = 1;
   } else {
     drawMatcher(data.left, view);
     drawMolecule(data.right, getVauMoleculeView(view));
@@ -480,7 +487,8 @@ function drawMatcher(data: Sexpr, view: VauView) {
       const halfside = view.halfside;
       ctx.beginPath();
       ctx.fillStyle = colorFromAtom(data.value.slice(1)).toHex();
-      ctx.globalAlpha = .5;
+      let prev_alpha = ctx.globalAlpha;
+      ctx.globalAlpha = .5 * prev_alpha;
       moveTo(ctx, view.pos.addX(halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-halfside));
       lineTo(ctx, view.pos.add(new Vec2(-halfside * 3, -halfside)));
@@ -490,7 +498,7 @@ function drawMatcher(data: Sexpr, view: VauView) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = prev_alpha;
     } else {
       const halfside = view.halfside;
       let profile = atom_shapes.get(data.value);
@@ -1184,6 +1192,7 @@ function game_frame(delta_time: number) {
       animation_state = {
         molecule_fade: 0,
         new_molecule_opacity: 0,
+        vau_molecule_opacity: 1,
         animating_vau_view: {
           progress: 0,
           duration: 3,
@@ -1200,15 +1209,16 @@ function game_frame(delta_time: number) {
               animation_state!.molecule_fade = t;
               return {
                 halfside: base_vau_view.halfside,
-                pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3),
+                pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -t * base_vau_view.halfside / 2)),
               };
             } else {
               let start_vau_view: VauView = {
                 halfside: base_vau_view.halfside,
-                pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3),
+                pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -base_vau_view.halfside / 2)),
               };
               // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
               t = remap(t, 2 / 3, 1, 0, 1);
+              animation_state!.vau_molecule_opacity = 1 - t;
               return {
                 halfside: base_vau_view.halfside,
                 pos: Vec2.lerp(start_vau_view.pos, base_molecule_view.pos.sub(new Vec2(spike_perc * base_vau_view.halfside / 2, base_vau_view.halfside / 2)), t),
