@@ -115,11 +115,12 @@ let animation_state: {
   animating_vau_view: Anim<VauView>,
   transformed_base_molecule: Sexpr,
   molecule_fade: number,
-  new_molecule_opacity: number,
+  // new_molecule_opacity: number,
   vau_molecule_opacity: number,
   molecule_address: Address,
   // bindings: Binding[],
   floating_binds: null | { binding: Binding, view: Anim<MoleculeView> }[],
+  binds_done: boolean,
 } | null = null;
 
 const top_vau_view: VauView = { pos: base_vau_view.pos.subY(canvas_size.y * .5), halfside: base_vau_view.halfside };
@@ -501,8 +502,10 @@ function drawVau(data: Pair, view: VauView) {
   if (animation_state !== null) {
     ctx.globalAlpha = 1 - animation_state.molecule_fade;
     drawMatcherDuringAnimation(data.left, view);
-    ctx.globalAlpha = animation_state.new_molecule_opacity;
-    drawMolecule(getAtAddress(animation_state.transformed_base_molecule, animation_state.molecule_address), getVauMoleculeView(view));
+    if (animation_state.binds_done) {
+      ctx.globalAlpha = 1;
+      drawMolecule(getAtAddress(animation_state.transformed_base_molecule, animation_state.molecule_address), getVauMoleculeView(view));
+    }
     ctx.globalAlpha = animation_state.vau_molecule_opacity;
     drawMolecule(data.right, getVauMoleculeView(view));
     ctx.globalAlpha = 1;
@@ -1304,7 +1307,7 @@ function game_frame(delta_time: number) {
       cur_molecule_view.updateTarget();
       animation_state = {
         molecule_fade: 0,
-        new_molecule_opacity: 0,
+        binds_done: false,
         vau_molecule_opacity: 1,
         molecule_address: cur_molecule_address,
         floating_binds: null,
@@ -1315,7 +1318,7 @@ function game_frame(delta_time: number) {
             if (animation_state === null) throw new Error("");
             if (t < 1 / 3) {
               t = remap(t, 0, 1 / 3, 0, 1);
-              animation_state.new_molecule_opacity = clamp(remap(t, .5, 1, 0, 1), 0, 1);
+              // animation_state.new_molecule_opacity = clamp(remap(t, .5, 1, 0, 1), 0, 1);
               return {
                 halfside: base_vau_view.halfside,
                 pos: Vec2.lerp(base_vau_view.pos, base_molecule_view.pos.addX(base_molecule_view.halfside * 3), t),
@@ -1351,6 +1354,7 @@ function game_frame(delta_time: number) {
                 pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -base_vau_view.halfside / 2)),
               };
               animation_state.floating_binds = null;
+              animation_state.binds_done = true;
               // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
               t = remap(t, 2 / 3, 1, 0, 1);
               animation_state.vau_molecule_opacity = 1 - t;
