@@ -498,21 +498,22 @@ function drawMatcherDuringAnimation(data: Sexpr, view: VauView) {
 
 
 type VauView = { pos: Vec2, halfside: number };
-function drawVau(data: Pair, view: VauView) {
-  if (animation_state !== null) {
-    ctx.globalAlpha = 1 - animation_state.molecule_fade;
-    drawMatcherDuringAnimation(data.left, view);
-    if (animation_state.binds_done) {
-      ctx.globalAlpha = 1;
-      drawMolecule(getAtAddress(animation_state.transformed_base_molecule, animation_state.molecule_address), getVauMoleculeView(view));
-    }
-    ctx.globalAlpha = animation_state.vau_molecule_opacity;
-    drawMolecule(data.right, getVauMoleculeView(view));
+function drawVauDuringAnimtion(data: Pair, view: VauView) {
+  if (animation_state === null) throw new Error("");
+  ctx.globalAlpha = 1 - animation_state.molecule_fade;
+  drawMatcherDuringAnimation(data.left, view);
+  if (animation_state.binds_done) {
     ctx.globalAlpha = 1;
-  } else {
-    drawMatcher(data.left, view);
-    drawMolecule(data.right, getVauMoleculeView(view));
+    drawMolecule(getAtAddress(animation_state.transformed_base_molecule, animation_state.molecule_address), getVauMoleculeView(view));
   }
+  ctx.globalAlpha = animation_state.vau_molecule_opacity;
+  drawMolecule(data.right, getVauMoleculeView(view));
+  ctx.globalAlpha = 1;
+}
+
+function drawVau(data: Pair, view: VauView) {
+  drawMatcher(data.left, view);
+  drawMolecule(data.right, getVauMoleculeView(view));
 }
 
 function getVauMoleculeView(view: VauView): MoleculeView {
@@ -1379,7 +1380,7 @@ function game_frame(delta_time: number) {
   }
   drawMolecule(cur_target, target_view);
   if (animation_state !== null) {
-    drawVau(cur_vau, advanceAnim(animation_state.animating_vau_view, delta_time));
+    drawVauDuringAnimtion(cur_vau, advanceAnim(animation_state.animating_vau_view, delta_time));
     if (animation_state.floating_binds !== null) {
       animation_state.floating_binds.forEach(({ binding, view }) => {
         drawMolecule(binding.value, advanceAnim(view, delta_time));
