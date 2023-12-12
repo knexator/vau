@@ -2,7 +2,7 @@ import GUI from "lil-gui";
 import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
 import { DefaultMap, eqArrays, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
-import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap, clamp } from "./kommon/math";
+import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap, clamp, towards } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
 
@@ -123,8 +123,9 @@ let animation_state: {
   binds_done: boolean,
 } | null = null;
 
-const top_vau_view: VauView = { pos: base_vau_view.pos.subY(canvas_size.y * .5), halfside: base_vau_view.halfside };
-const bottom_vau_view: VauView = { pos: base_vau_view.pos.addY(canvas_size.y * .5), halfside: base_vau_view.halfside };
+function offsetVauView(view: VauView, vertical_offset: number): VauView {
+  return { pos: view.pos.addY(canvas_size.y * vertical_offset / 2), halfside: view.halfside };
+}
 
 const default_vau: Pair = parseSexpr(`(
   (1 . @2)
@@ -145,6 +146,7 @@ let cur_vaus: Pair[] = [
   )`) as Pair,
 ];
 let cur_vau_index = 0;
+let vau_index_visual_offset = 0;
 
 let cur_test_case: number = 0;
 
@@ -1157,12 +1159,14 @@ function game_frame(delta_time: number) {
       save_cur_level();
       if (cur_vau_index === cur_vaus.length) {
         cur_vau_index -= 1;
+        vau_index_visual_offset -= 1;
       }
     }
   }
   if (input.keyboard.wasPressed(KeyCode.KeyI)) {
     if (cur_vau_index > 0) {
       cur_vau_index -= 1;
+      vau_index_visual_offset -= 1;
     } else {
       cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
       save_cur_level();
@@ -1171,10 +1175,12 @@ function game_frame(delta_time: number) {
   if (input.keyboard.wasPressed(KeyCode.KeyK)) {
     if (cur_vau_index + 1 < cur_vaus.length) {
       cur_vau_index += 1;
+      vau_index_visual_offset += 1;
     } else {
       cur_vaus.push(cloneSexpr(default_vau) as Pair);
       save_cur_level();
       cur_vau_index += 1;
+      vau_index_visual_offset += 1;
     }
   }
 
@@ -1294,14 +1300,15 @@ function game_frame(delta_time: number) {
       animation_state = null;
     }
   } else {
-    drawVau(cur_vau, base_vau_view);
+    drawVau(cur_vau, offsetVauView(base_vau_view, vau_index_visual_offset));
   }
   if (cur_vau_index > 0) {
-    drawVau(cur_vaus[cur_vau_index - 1], top_vau_view);
+    drawVau(cur_vaus[cur_vau_index - 1], offsetVauView(base_vau_view, -1 + vau_index_visual_offset));
   }
   if (cur_vau_index + 1 < cur_vaus.length) {
-    drawVau(cur_vaus[cur_vau_index + 1], bottom_vau_view);
+    drawVau(cur_vaus[cur_vau_index + 1], offsetVauView(base_vau_view, 1 + vau_index_visual_offset));
   }
+  vau_index_visual_offset = towards(vau_index_visual_offset, 0, delta_time / .2);
 
   toolbar_atoms.forEach(({ view, value }) => drawMolecule(value, view));
   toolbar_templates.forEach(({ view, value }) => drawMatcher(value, view));
