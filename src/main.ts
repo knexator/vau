@@ -1248,126 +1248,19 @@ function game_frame(delta_time: number) {
     }
   } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
     // same as Z but with animation
-    // const result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-    // if (result !== null) {
-    //   animation_state = {
-    //     molecule_fade: 0,
-    //     new_molecule_opacity: 0,
-    //     vau_molecule_opacity: 1,
-    //     molecule_address: cur_molecule_address,
-    //     bindings: result.bindings,
-    //     floating_binds: null,
-    //     animating_vau_view: {
-    //       progress: 0,
-    //       duration: 3,
-    //       callback: t => {
-    //         if (t < 1 / 3) {
-    //           t = remap(t, 0, 1 / 3, 0, 1);
-    //           animation_state!.new_molecule_opacity = clamp(remap(t, .5, 1, 0, 1), 0, 1);
-    //           return {
-    //             halfside: base_vau_view.halfside,
-    //             pos: Vec2.lerp(base_vau_view.pos, base_molecule_view.pos.addX(base_molecule_view.halfside * 3), t),
-    //           };
-    //         } else if (t < 2 / 3) {
-    //           t = remap(t, 1 / 3, 2 / 3, 0, 1);
-    //           animation_state!.molecule_fade = t;
-    //           return {
-    //             halfside: base_vau_view.halfside,
-    //             pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -t * base_vau_view.halfside / 2)),
-    //           };
-    //         } else {
-    //           let start_vau_view: VauView = {
-    //             halfside: base_vau_view.halfside,
-    //             pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -base_vau_view.halfside / 2)),
-    //           };
-    //           // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
-    //           t = remap(t, 2 / 3, 1, 0, 1);
-    //           animation_state!.vau_molecule_opacity = 1 - t;
-    //           return {
-    //             halfside: base_vau_view.halfside,
-    //             pos: Vec2.lerp(start_vau_view.pos, base_molecule_view.pos.sub(new Vec2(spike_perc * base_vau_view.halfside / 2, base_vau_view.halfside / 2)), t),
-    //           };
-    //         }
-    //       }
-    //     },
-    //     transformed_base_molecule: setAtAddress(cur_base_molecule, cur_molecule_address, result.new_molecule),
-    //   };
-    // }
+    const bind_result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+    if (bind_result !== null) {
+      animate({
+        bindings: bind_result.bindings,
+        new_molecule: bind_result.new_molecule,
+        bound_at: []
+      }, cur_vau);
+    }
   } else if (input.keyboard.wasPressed(KeyCode.KeyN)) {
     // same as X (cur vau, whole molecule) but with animation
     const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
     if (bind_result !== null) {
-      let bind_targets = bind_result.bindings.map(b => {
-        return {
-          binding: b,
-          targets: findBindingTargets(cur_vau.right, b, []),
-        }
-      });
-      let old_address = cur_molecule_address;
-      cur_molecule_address = [...cur_molecule_address, ...bind_result.bound_at];
-      cur_molecule_view.updateTarget();
-      animation_state = {
-        molecule_fade: 0,
-        binds_done: false,
-        vau_molecule_opacity: 1,
-        molecule_address: cur_molecule_address,
-        floating_binds: null,
-        animating_vau_view: {
-          progress: 0,
-          duration: 3,
-          callback: t => {
-            if (animation_state === null) throw new Error("");
-            if (t < 1 / 3) {
-              t = remap(t, 0, 1 / 3, 0, 1);
-              // animation_state.new_molecule_opacity = clamp(remap(t, .5, 1, 0, 1), 0, 1);
-              return {
-                halfside: base_vau_view.halfside,
-                pos: Vec2.lerp(base_vau_view.pos, base_molecule_view.pos.addX(base_molecule_view.halfside * 3), t),
-              };
-            } else if (t < 2 / 3) {
-              t = remap(t, 1 / 3, 2 / 3, 0, 1);
-              animation_state.molecule_fade = t;
-              if (animation_state.floating_binds === null) {
-                animation_state.floating_binds = bind_result.bindings.flatMap(b => {
-                  return bind_targets.find(x => x.binding === b)!.targets.map(target => {
-                    return {
-                      binding: b,
-                      view: makeLerpAnim(
-                        getGrandchildView(base_molecule_view, b.address),
-                        getGrandchildView({
-                          pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3.25),
-                          halfside: base_molecule_view.halfside,
-                        }, target),
-                        .9,
-                        lerpMoleculeViews
-                      )
-                    };
-                  });
-                })
-              }
-              return {
-                halfside: base_vau_view.halfside,
-                pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -t * base_vau_view.halfside / 2)),
-              };
-            } else {
-              let start_vau_view: VauView = {
-                halfside: base_vau_view.halfside,
-                pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -base_vau_view.halfside / 2)),
-              };
-              animation_state.floating_binds = null;
-              animation_state.binds_done = true;
-              // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
-              t = remap(t, 2 / 3, 1, 0, 1);
-              animation_state.vau_molecule_opacity = 1 - t;
-              return {
-                halfside: base_vau_view.halfside,
-                pos: Vec2.lerp(start_vau_view.pos, base_molecule_view.pos.sub(new Vec2(spike_perc * base_vau_view.halfside / 2, base_vau_view.halfside / 2)), t),
-              };
-            }
-          }
-        },
-        transformed_base_molecule: setAtAddress(cur_base_molecule, old_address, bind_result.new_molecule),
-      };
+      animate(bind_result, cur_vau);
     }
   }
 
@@ -1601,6 +1494,80 @@ const atom_shapes = new DefaultMap<string, AtomProfile>((_) => [], new Map(Objec
   // '5': [new Vec2(.2, 0), new Vec2(.5, .2), new Vec2(.8, 0)],
   // '5': 
 })));
+
+function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings: Binding[]; }, cur_vau: Pair) {
+  let bind_targets = bind_result.bindings.map(b => {
+    return {
+      binding: b,
+      targets: findBindingTargets(cur_vau.right, b, []),
+    };
+  });
+  let old_address = cur_molecule_address;
+  cur_molecule_address = [...cur_molecule_address, ...bind_result.bound_at];
+  cur_molecule_view.updateTarget();
+  animation_state = {
+    molecule_fade: 0,
+    binds_done: false,
+    vau_molecule_opacity: 1,
+    molecule_address: cur_molecule_address,
+    floating_binds: null,
+    animating_vau_view: {
+      progress: 0,
+      duration: 3,
+      callback: t => {
+        if (animation_state === null) throw new Error("");
+        if (t < 1 / 3) {
+          t = remap(t, 0, 1 / 3, 0, 1);
+          // animation_state.new_molecule_opacity = clamp(remap(t, .5, 1, 0, 1), 0, 1);
+          return {
+            halfside: base_vau_view.halfside,
+            pos: Vec2.lerp(base_vau_view.pos, base_molecule_view.pos.addX(base_molecule_view.halfside * 3), t),
+          };
+        } else if (t < 2 / 3) {
+          t = remap(t, 1 / 3, 2 / 3, 0, 1);
+          animation_state.molecule_fade = t;
+          if (animation_state.floating_binds === null) {
+            animation_state.floating_binds = bind_result.bindings.flatMap(b => {
+              return bind_targets.find(x => x.binding === b)!.targets.map(target => {
+                return {
+                  binding: b,
+                  view: makeLerpAnim(
+                    getGrandchildView(base_molecule_view, b.address),
+                    getGrandchildView({
+                      pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3.25),
+                      halfside: base_molecule_view.halfside,
+                    }, target),
+                    .9,
+                    lerpMoleculeViews
+                  )
+                };
+              });
+            });
+          }
+          return {
+            halfside: base_vau_view.halfside,
+            pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -t * base_vau_view.halfside / 2)),
+          };
+        } else {
+          let start_vau_view: VauView = {
+            halfside: base_vau_view.halfside,
+            pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -base_vau_view.halfside / 2)),
+          };
+          animation_state.floating_binds = null;
+          animation_state.binds_done = true;
+          // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
+          t = remap(t, 2 / 3, 1, 0, 1);
+          animation_state.vau_molecule_opacity = 1 - t;
+          return {
+            halfside: base_vau_view.halfside,
+            pos: Vec2.lerp(start_vau_view.pos, base_molecule_view.pos.sub(new Vec2(spike_perc * base_vau_view.halfside / 2, base_vau_view.halfside / 2)), t),
+          };
+        }
+      }
+    },
+    transformed_base_molecule: setAtAddress(cur_base_molecule, old_address, bind_result.new_molecule),
+  };
+}
 
 // library stuff /////////////////////////
 
