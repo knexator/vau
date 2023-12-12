@@ -1277,8 +1277,35 @@ function game_frame(delta_time: number) {
     } else {
       cur_molecule_address = old_address;
     }
+  } else if (input.keyboard.wasPressed(KeyCode.Space)) {
+    // any vau, anywhere in the molecule, with animation
+    let old_address = cur_molecule_address;
+    cur_molecule_address = [];
+
+    let any_bound = false;
+    for (let k = 0; k < cur_vaus.length; k++) {
+      const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+      if (bind_result !== null) {
+        doWhen(() => animate(bind_result, cur_vau),
+          () => vau_index_visual_offset === 0);
+        vau_index_visual_offset += k - cur_vau_index;
+        cur_vau_index = k;
+        any_bound = true;
+        break;
+      }
+    }
+    if (!any_bound) {
+      cur_molecule_address = old_address;
+    }
   }
 
+  pending_dowhens = pending_dowhens.filter(({action, condition}) => {
+    if (condition()) {
+      action();
+      return false;
+    }
+    return true;
+  })
 
   ctx.lineWidth = 2;
   if (animation_state === null) {
@@ -1583,6 +1610,11 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
     },
     transformed_base_molecule: setAtAddress(cur_base_molecule, old_address, bind_result.new_molecule),
   };
+}
+
+let pending_dowhens: {action: () => void, condition: () => boolean}[] = [];
+function doWhen(action: () => void, condition: () => boolean) {
+  pending_dowhens.push({action, condition});
 }
 
 // library stuff /////////////////////////
