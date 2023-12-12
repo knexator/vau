@@ -651,10 +651,9 @@ function lerpMoleculeViews(a: MoleculeView, b: MoleculeView, t: number): Molecul
 }
 
 const cur_molecule_view = {
-  lerp: lerpMoleculeViews,
   duration: .1,
   setTarget: function (v: MoleculeView): void {
-    this.anim = makeLerpAnim(getFinalValue(this.anim), v, this.duration, this.lerp);
+    this.anim = makeLerpAnim(getFinalValue(this.anim), v, this.duration, lerpMoleculeViews);
   },
   anim: makeConstantAnim(base_molecule_view),
   updateTarget: function (): void {
@@ -1262,6 +1261,16 @@ function game_frame(delta_time: number) {
     if (bind_result !== null) {
       animate(bind_result, cur_vau);
     }
+  } else if (input.keyboard.wasPressed(KeyCode.KeyM)) {
+    // anywhere in the molecule, with animation
+    let old_address = cur_molecule_address;
+    cur_molecule_address = [];
+    const bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
+    if (bind_result !== null) {
+      animate(bind_result, cur_vau);
+    } else {
+      cur_molecule_address = old_address;
+    }
   }
 
 
@@ -1513,7 +1522,7 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
     floating_binds: null,
     animating_vau_view: {
       progress: 0,
-      duration: 3,
+      duration: 2.0,
       callback: t => {
         if (animation_state === null) throw new Error("");
         if (t < 1 / 3) {
@@ -1537,7 +1546,7 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
                       pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 3.25),
                       halfside: base_molecule_view.halfside,
                     }, target),
-                    .9,
+                    1.9 / 3,
                     lerpMoleculeViews
                   )
                 };
