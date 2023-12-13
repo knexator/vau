@@ -1,7 +1,7 @@
 import GUI from "lil-gui";
 import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
-import { DefaultMap, eqArrays, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
+import { DefaultMap, commonPrefixLen, eqArrays, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap, clamp, towards } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
@@ -641,6 +641,28 @@ function makeLerpAnim<T>(a: T, b: T, duration: number, lerp: (a: T, b: T, t: num
   }
 }
 
+function queueAnims<T>(anims: Anim<T>[]): Anim<T> {
+  const total_duration = anims.reduce((acc, v) => acc + v.duration, 0);
+  return {
+    progress: 0,
+    duration: total_duration,
+    callback(t) {
+      let time = t * total_duration;
+      let index = 0;
+      while (time > anims[index].duration) {
+        time -= anims[index].duration;
+        index += 1;
+        if (index === anims.length) {
+          // float precision, agh
+          index -= 1;
+          break;
+        }
+      }
+      return anims[index].callback(time / anims[index].duration);
+    },
+  }
+}
+
 function getFinalValue<T>(anim: Anim<T>): T {
   return anim.callback(1);
 }
@@ -668,7 +690,36 @@ const cur_molecule_view = {
   },
   get cur(): MoleculeView {
     return this.anim.callback(this.anim.progress);
-  }
+  },
+  animateToAdress: function (new_address: Address): void {
+    // Proper animation: don't jump between cousins
+    // let common_prefix_len = commonPrefixLen(cur_molecule_address, new_address);
+    // console.log(common_prefix_len);
+    // let last_view = this.cur;
+    // let anims = [];
+    // for (let k = cur_molecule_address.length - 1; k >= common_prefix_len; k--) {
+    //   let cur_view = getGrandparentView(base_molecule_view, cur_molecule_address.slice(0, k));
+    //   anims.push(
+    //     makeLerpAnim(last_view, cur_view, .2, lerpMoleculeViews)
+    //   );
+    //   last_view = cur_view;
+    // }
+    // for (let k = common_prefix_len + 1; k <= new_address.length; k++) {
+    //   let cur_view = getGrandparentView(base_molecule_view, new_address.slice(0, k));
+    //   anims.push(
+    //     makeLerpAnim(last_view, cur_view, .2, lerpMoleculeViews)
+    //   );
+    //   last_view = cur_view;
+    // }
+    // cur_molecule_address = new_address;
+    // this.anim = queueAnims(anims);
+
+    // Simplest animation
+    cur_molecule_address = new_address;
+    this.updateTarget();
+
+    // TODO: better animation
+  },
 }
 
 type MoleculePlace = { type: "none" } | {
@@ -1415,9 +1466,7 @@ function game_frame(delta_time: number) {
     }
   }
   if (cur_mouse_place.type === "molecule" && input.mouse.wasPressed(MouseButton.Right)) {
-    // TODO: better lerp
-    cur_molecule_address = cur_mouse_place.molecule_address;
-    cur_molecule_view.updateTarget();
+    cur_molecule_view.animateToAdress(cur_mouse_place.molecule_address);
   }
   switch (mouse_state.type) {
     case "none": {

@@ -23,6 +23,17 @@ export function reversed<T>(array: T[]) {
     return array.map((_item, idx) => array[array.length - 1 - idx]);
 }
 
+export function commonPrefixLen<T>(arr1: T[], arr2: T[]): number {
+    let result = 0;
+    while (result < Math.min(arr1.length, arr2.length)) {
+        if (arr1[result] !== arr2[result]) {
+            break;
+        }
+        result += 1;
+    }
+    return result;
+}
+
 export function reversedForEach<T>(arr: T[], callback: (value: T, index?: number, obj?: T[]) => void): void {
     for (let k = arr.length - 1; k >= 0; k--) {
         callback(arr[k], k, arr);
