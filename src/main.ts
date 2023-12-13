@@ -317,8 +317,11 @@ function drawMoleculeNonRecursive(data: Sexpr, view: MoleculeView) {
       ctx.fillStyle = colorFromAtom(data.value.slice(1)).toHex();
       moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
       lineTo(ctx, view.pos.addY(-view.halfside));
-      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
-      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+      // lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
+      // lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, -view.halfside)));
+      lineTo(ctx, view.pos.addX(view.halfside * (3 + spike_perc)));
+      lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, view.halfside)));
       lineTo(ctx, view.pos.addY(view.halfside));
       ctx.closePath();
       ctx.fill();
@@ -362,6 +365,24 @@ function drawMoleculeNonRecursive(data: Sexpr, view: MoleculeView) {
     ctx.fill();
     ctx.stroke();
   }
+}
+
+function drawBigBind(name: string, view: MoleculeView) {
+  if (name[0] !== "@") throw new Error("");
+  ctx.beginPath();
+  let prev_alpha = ctx.globalAlpha;
+  ctx.globalAlpha = .5 * prev_alpha;
+  ctx.fillStyle = colorFromAtom(name.slice(1)).toHex();
+  moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
+  lineTo(ctx, view.pos.addY(-view.halfside));
+  lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, -view.halfside)));
+  lineTo(ctx, view.pos.addX(view.halfside * (3 + spike_perc)));
+  lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, view.halfside)));
+  lineTo(ctx, view.pos.addY(view.halfside));
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.globalAlpha = prev_alpha;
 }
 
 function drawMolecule(data: Sexpr, view: MoleculeView) {
@@ -1306,32 +1327,32 @@ function game_frame(delta_time: number) {
         }
       }
     }
-  // } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
-  //   // same as Z but with animation
-  //   const bind_result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-  //   if (bind_result !== null) {
-  //     animate({
-  //       bindings: bind_result.bindings,
-  //       new_molecule: bind_result.new_molecule,
-  //       bound_at: []
-  //     }, cur_vau);
-  //   }
-  // } else if (input.keyboard.wasPressed(KeyCode.KeyN)) {
-  //   // same as X (cur vau, whole molecule) but with animation
-  //   const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-  //   if (bind_result !== null) {
-  //     animate(bind_result, cur_vau);
-  //   }
-  // } else if (input.keyboard.wasPressed(KeyCode.KeyM)) {
-  //   // anywhere in the molecule, with animation
-  //   let old_address = cur_molecule_address;
-  //   cur_molecule_address = [];
-  //   const bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
-  //   if (bind_result !== null) {
-  //     animate(bind_result, cur_vau);
-  //   } else {
-  //     cur_molecule_address = old_address;
-  //   }
+    // } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
+    //   // same as Z but with animation
+    //   const bind_result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+    //   if (bind_result !== null) {
+    //     animate({
+    //       bindings: bind_result.bindings,
+    //       new_molecule: bind_result.new_molecule,
+    //       bound_at: []
+    //     }, cur_vau);
+    //   }
+    // } else if (input.keyboard.wasPressed(KeyCode.KeyN)) {
+    //   // same as X (cur vau, whole molecule) but with animation
+    //   const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+    //   if (bind_result !== null) {
+    //     animate(bind_result, cur_vau);
+    //   }
+    // } else if (input.keyboard.wasPressed(KeyCode.KeyM)) {
+    //   // anywhere in the molecule, with animation
+    //   let old_address = cur_molecule_address;
+    //   cur_molecule_address = [];
+    //   const bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
+    //   if (bind_result !== null) {
+    //     animate(bind_result, cur_vau);
+    //   } else {
+    //     cur_molecule_address = old_address;
+    //   }
   } else if (input.keyboard.wasPressed(KeyCode.Space)) {
     // any vau, anywhere in the molecule, with animation
     for (let k = 0; k < cur_vaus.length; k++) {
@@ -1370,7 +1391,7 @@ function game_frame(delta_time: number) {
     if (animation_state.floating_binds !== null) {
       animation_state.floating_binds.forEach(({ binding, view }) => {
         drawMolecule(binding.value, advanceAnim(view, delta_time));
-        drawMolecule(doAtom(binding.name), advanceAnim(view, 0));
+        drawBigBind(binding.name, advanceAnim(view, 0));
       })
     }
     if (animation_state.animating_vau_view.progress >= 1) {
