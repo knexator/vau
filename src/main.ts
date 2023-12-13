@@ -662,6 +662,10 @@ const cur_molecule_view = {
     let new_target = getGrandparentView(base_molecule_view, cur_molecule_address);
     this.setTarget(new_target);
   },
+  instantlyUpdateTarget: function (): void {
+    this.updateTarget();
+    this.anim.progress = 1;
+  },
   get cur(): MoleculeView {
     return this.anim.callback(this.anim.progress);
   }
@@ -1299,7 +1303,9 @@ function game_frame(delta_time: number) {
     }
   }
 
-  pending_dowhens = pending_dowhens.filter(({action, condition}) => {
+  // TODO: animate view selection at the same time as vau selection
+
+  pending_dowhens = pending_dowhens.filter(({ action, condition }) => {
     if (condition()) {
       action();
       return false;
@@ -1356,11 +1362,15 @@ function game_frame(delta_time: number) {
       if (button('<', Rectangle.fromParams({ bottomLeft: new Vec2(0, canvas.height), size: new Vec2(50, 50) }))) {
         cur_test_case -= 1;
         [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+        cur_molecule_address = [];
+        cur_molecule_view.instantlyUpdateTarget();
       }
     }
     if (button('>', Rectangle.fromParams({ bottomLeft: new Vec2(150, canvas.height), size: new Vec2(50, 50) }))) {
       cur_test_case += 1;
       [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+      cur_molecule_address = [];
+      cur_molecule_view.instantlyUpdateTarget();
     }
 
     ctx.fillStyle = "black";
@@ -1612,9 +1622,9 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
   };
 }
 
-let pending_dowhens: {action: () => void, condition: () => boolean}[] = [];
+let pending_dowhens: { action: () => void, condition: () => boolean }[] = [];
 function doWhen(action: () => void, condition: () => boolean) {
-  pending_dowhens.push({action, condition});
+  pending_dowhens.push({ action, condition });
 }
 
 // library stuff /////////////////////////
