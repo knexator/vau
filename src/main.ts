@@ -1306,51 +1306,45 @@ function game_frame(delta_time: number) {
         }
       }
     }
-  } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
-    // same as Z but with animation
-    const bind_result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-    if (bind_result !== null) {
-      animate({
-        bindings: bind_result.bindings,
-        new_molecule: bind_result.new_molecule,
-        bound_at: []
-      }, cur_vau);
-    }
-  } else if (input.keyboard.wasPressed(KeyCode.KeyN)) {
-    // same as X (cur vau, whole molecule) but with animation
-    const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-    if (bind_result !== null) {
-      animate(bind_result, cur_vau);
-    }
-  } else if (input.keyboard.wasPressed(KeyCode.KeyM)) {
-    // anywhere in the molecule, with animation
-    let old_address = cur_molecule_address;
-    cur_molecule_address = [];
-    const bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
-    if (bind_result !== null) {
-      animate(bind_result, cur_vau);
-    } else {
-      cur_molecule_address = old_address;
-    }
+  // } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
+  //   // same as Z but with animation
+  //   const bind_result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+  //   if (bind_result !== null) {
+  //     animate({
+  //       bindings: bind_result.bindings,
+  //       new_molecule: bind_result.new_molecule,
+  //       bound_at: []
+  //     }, cur_vau);
+  //   }
+  // } else if (input.keyboard.wasPressed(KeyCode.KeyN)) {
+  //   // same as X (cur vau, whole molecule) but with animation
+  //   const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+  //   if (bind_result !== null) {
+  //     animate(bind_result, cur_vau);
+  //   }
+  // } else if (input.keyboard.wasPressed(KeyCode.KeyM)) {
+  //   // anywhere in the molecule, with animation
+  //   let old_address = cur_molecule_address;
+  //   cur_molecule_address = [];
+  //   const bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
+  //   if (bind_result !== null) {
+  //     animate(bind_result, cur_vau);
+  //   } else {
+  //     cur_molecule_address = old_address;
+  //   }
   } else if (input.keyboard.wasPressed(KeyCode.Space)) {
     // any vau, anywhere in the molecule, with animation
-    let old_address = cur_molecule_address;
-    cur_molecule_address = [];
-
-    let any_bound = false;
     for (let k = 0; k < cur_vaus.length; k++) {
       const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
       if (bind_result !== null) {
-        doWhen(() => animate(bind_result, cur_vau),
-          () => vau_index_visual_offset === 0);
+        cur_molecule_view.animateToAdress(bind_result.bound_at);
         vau_index_visual_offset += k - cur_vau_index;
         cur_vau_index = k;
-        any_bound = true;
+        let vau = cur_vaus[k];
+        doWhen(() => animate(bind_result, vau),
+          () => vau_index_visual_offset === 0);
         break;
       }
-    }
-    if (!any_bound) {
-      cur_molecule_address = old_address;
     }
   }
 
@@ -1604,14 +1598,11 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
       targets: findBindingTargets(cur_vau.right, b, []),
     };
   });
-  let old_address = cur_molecule_address;
-  cur_molecule_address = [...cur_molecule_address, ...bind_result.bound_at];
-  cur_molecule_view.updateTarget();
   animation_state = {
     molecule_fade: 0,
     binds_done: false,
     vau_molecule_opacity: 1,
-    molecule_address: cur_molecule_address,
+    molecule_address: bind_result.bound_at,
     floating_binds: null,
     animating_vau_view: {
       progress: 0,
@@ -1629,6 +1620,7 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
           t = remap(t, 1 / 3, 2 / 3, 0, 1);
           animation_state.molecule_fade = t;
           if (animation_state.floating_binds === null) {
+            console.log(bind_result.bindings, bind_targets);
             animation_state.floating_binds = bind_result.bindings.flatMap(b => {
               return bind_targets.find(x => x.binding === b)!.targets.map(target => {
                 return {
@@ -1655,6 +1647,7 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
             halfside: base_vau_view.halfside,
             pos: base_molecule_view.pos.add(new Vec2(base_molecule_view.halfside * 3, -base_vau_view.halfside / 2)),
           };
+          animation_state.molecule_fade = 1;
           animation_state.floating_binds = null;
           animation_state.binds_done = true;
           // let start_molecule_view: MoleculeView = getVauMoleculeView(start_vau_view);
@@ -1667,7 +1660,7 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
         }
       }
     },
-    transformed_base_molecule: setAtAddress(cur_base_molecule, old_address, bind_result.new_molecule),
+    transformed_base_molecule: bind_result.new_molecule,
   };
 }
 
