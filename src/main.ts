@@ -1052,6 +1052,10 @@ let levels: Level[] = [
   ),
 ];
 
+function canInteract() {
+  return (vau_index_visual_offset === 0) && (animation_state === null);
+}
+
 function randomInt(rand: Rand, low_inclusive: number, high_exclusive: number): number {
   return low_inclusive + Math.floor(rand.next() * (high_exclusive - low_inclusive));
 }
@@ -1113,7 +1117,7 @@ function makeRandomSexpr(rand: Rand, max_depth: number, pieces: Atom[]): Sexpr {
 function button(text: string, rect: Rectangle): boolean {
   let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   let pressed = false;
-  if (rect.contains(mouse_pos)) {
+  if (canInteract() && rect.contains(mouse_pos)) {
     ctx.fillStyle = "#BBBBBB";
     pressed = input.mouse.wasPressed(MouseButton.Left);
   } else {
@@ -1215,162 +1219,166 @@ ctx.textBaseline = "middle";
 ctx.textAlign = "center";
 
 function game_frame(delta_time: number) {
-  if (input.keyboard.wasPressed(KeyCode.KeyA)) {
-    if (cur_molecule_address.length > 0) {
-      cur_molecule_address.pop();
-      cur_molecule_view.updateTarget();
-    }
-  }
-  if (input.keyboard.wasPressed(KeyCode.KeyW)) {
-    if (isValidAddress(cur_base_molecule, [...cur_molecule_address, true])) {
-      cur_molecule_address.push(true);
-      cur_molecule_view.updateTarget();
-    }
-  }
-  if (input.keyboard.wasPressed(KeyCode.KeyS)) {
-    if (isValidAddress(cur_base_molecule, [...cur_molecule_address, false])) {
-      cur_molecule_address.push(false);
-      cur_molecule_view.updateTarget();
-    }
-  }
-
-  if (input.keyboard.wasPressed(KeyCode.KeyL)) {
-    // delete vau
-    if (cur_vaus.length > 1) {
-      cur_vaus.splice(cur_vau_index, 1);
-      save_cur_level();
-      if (cur_vau_index === cur_vaus.length) {
-        cur_vau_index -= 1;
-        vau_index_visual_offset -= 1;
+  if (canInteract()) {
+    if (input.keyboard.wasPressed(KeyCode.KeyA)) {
+      if (cur_molecule_address.length > 0) {
+        cur_molecule_address.pop();
+        cur_molecule_view.updateTarget();
       }
     }
-  }
-  if (input.keyboard.wasPressed(KeyCode.KeyI)) {
-    if (cur_vau_index > 0) {
-      cur_vau_index -= 1;
-      vau_index_visual_offset -= 1;
-    } else {
-      cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
-      save_cur_level();
+    if (input.keyboard.wasPressed(KeyCode.KeyW)) {
+      if (isValidAddress(cur_base_molecule, [...cur_molecule_address, true])) {
+        cur_molecule_address.push(true);
+        cur_molecule_view.updateTarget();
+      }
     }
-  }
-  if (input.keyboard.wasPressed(KeyCode.KeyK)) {
-    if (cur_vau_index + 1 < cur_vaus.length) {
-      cur_vau_index += 1;
-      vau_index_visual_offset += 1;
-    } else {
-      cur_vaus.push(cloneSexpr(default_vau) as Pair);
-      save_cur_level();
-      cur_vau_index += 1;
-      vau_index_visual_offset += 1;
+    if (input.keyboard.wasPressed(KeyCode.KeyS)) {
+      if (isValidAddress(cur_base_molecule, [...cur_molecule_address, false])) {
+        cur_molecule_address.push(false);
+        cur_molecule_view.updateTarget();
+      }
     }
-  }
 
-  const digits = [
-    KeyCode.Digit1,
-    KeyCode.Digit2,
-    KeyCode.Digit3,
-    KeyCode.Digit4,
-    KeyCode.Digit5,
-    KeyCode.Digit6,
-    KeyCode.Digit7,
-    KeyCode.Digit8,
-    KeyCode.Digit9,
-  ];
-  digits.forEach((key, k) => {
-    if (input.keyboard.wasPressed(key)) {
-      console.log(cur_molecule_address);
-      cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, { type: "atom", value: k.toString() });
+    if (input.keyboard.wasPressed(KeyCode.KeyL)) {
+      // delete vau
+      if (cur_vaus.length > 1) {
+        cur_vaus.splice(cur_vau_index, 1);
+        save_cur_level();
+        if (cur_vau_index === cur_vaus.length) {
+          cur_vau_index -= 1;
+          vau_index_visual_offset -= 1;
+        }
+      }
     }
-  });
-  if (input.keyboard.wasPressed(KeyCode.Digit0)) {
-    cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, {
-      type: "pair",
-      left: { type: "atom", value: "0" },
-      right: { type: "atom", value: "0" },
+    if (input.keyboard.wasPressed(KeyCode.KeyI)) {
+      if (cur_vau_index > 0) {
+        cur_vau_index -= 1;
+        vau_index_visual_offset -= 1;
+      } else {
+        cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
+        save_cur_level();
+      }
+    }
+    if (input.keyboard.wasPressed(KeyCode.KeyK)) {
+      if (cur_vau_index + 1 < cur_vaus.length) {
+        cur_vau_index += 1;
+        vau_index_visual_offset += 1;
+      } else {
+        cur_vaus.push(cloneSexpr(default_vau) as Pair);
+        save_cur_level();
+        cur_vau_index += 1;
+        vau_index_visual_offset += 1;
+      }
+    }
+
+    const digits = [
+      KeyCode.Digit1,
+      KeyCode.Digit2,
+      KeyCode.Digit3,
+      KeyCode.Digit4,
+      KeyCode.Digit5,
+      KeyCode.Digit6,
+      KeyCode.Digit7,
+      KeyCode.Digit8,
+      KeyCode.Digit9,
+    ];
+    digits.forEach((key, k) => {
+      if (input.keyboard.wasPressed(key)) {
+        console.log(cur_molecule_address);
+        cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, { type: "atom", value: k.toString() });
+      }
     });
+    if (input.keyboard.wasPressed(KeyCode.Digit0)) {
+      cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, {
+        type: "pair",
+        left: { type: "atom", value: "0" },
+        right: { type: "atom", value: "0" },
+      });
+    }
+
+
   }
-
-
   if (cur_vaus.length === 0) {
     cur_vaus.push(cloneSexpr(default_vau) as Pair);
     save_cur_level();
   }
   const cur_vau = cur_vaus[cur_vau_index];
 
-  if (input.keyboard.wasPressed(KeyCode.KeyZ)) {
-    // apply current vau to current molecule
-    const new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-    if (new_molecule !== null) {
-      cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule.new_molecule);
-    }
-  } else if (input.keyboard.wasPressed(KeyCode.KeyX)) {
-    // apply current vau to whole molecule
-    const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-    if (bind_result !== null) {
-      cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, bind_result.new_molecule);
-    }
-  } else if (input.keyboard.wasPressed(KeyCode.KeyC)) {
-    // apply all vaus to whole molecule until one works
-    for (let k = 0; k < cur_vaus.length; k++) {
-      const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
+  if (canInteract()) {
+    if (input.keyboard.wasPressed(KeyCode.KeyZ)) {
+      // apply current vau to current molecule
+      const new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+      if (new_molecule !== null) {
+        cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, new_molecule.new_molecule);
+      }
+    } else if (input.keyboard.wasPressed(KeyCode.KeyX)) {
+      // apply current vau to whole molecule
+      const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
       if (bind_result !== null) {
         cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, bind_result.new_molecule);
-        break;
       }
-    }
-  } else if (input.keyboard.wasPressed(KeyCode.KeyV)) {
-    // apply all vaus to whole molecule until one works, until none of them work
-    let any_changes = true;
-    while (any_changes) {
-      any_changes = false;
+    } else if (input.keyboard.wasPressed(KeyCode.KeyC)) {
+      // apply all vaus to whole molecule until one works
       for (let k = 0; k < cur_vaus.length; k++) {
         const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
         if (bind_result !== null) {
           cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, bind_result.new_molecule);
-          any_changes = true;
           break;
         }
       }
-    }
-    // } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
-    //   // same as Z but with animation
-    //   const bind_result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-    //   if (bind_result !== null) {
-    //     animate({
-    //       bindings: bind_result.bindings,
-    //       new_molecule: bind_result.new_molecule,
-    //       bound_at: []
-    //     }, cur_vau);
-    //   }
-    // } else if (input.keyboard.wasPressed(KeyCode.KeyN)) {
-    //   // same as X (cur vau, whole molecule) but with animation
-    //   const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
-    //   if (bind_result !== null) {
-    //     animate(bind_result, cur_vau);
-    //   }
-    // } else if (input.keyboard.wasPressed(KeyCode.KeyM)) {
-    //   // anywhere in the molecule, with animation
-    //   let old_address = cur_molecule_address;
-    //   cur_molecule_address = [];
-    //   const bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
-    //   if (bind_result !== null) {
-    //     animate(bind_result, cur_vau);
-    //   } else {
-    //     cur_molecule_address = old_address;
-    //   }
-  } else if (input.keyboard.wasPressed(KeyCode.Space)) {
-    // any vau, anywhere in the molecule, with animation
-    for (let k = 0; k < cur_vaus.length; k++) {
-      const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
-      if (bind_result !== null) {
-        cur_molecule_view.animateToAdress(bind_result.bound_at);
-        vau_index_visual_offset += k - cur_vau_index;
-        cur_vau_index = k;
-        let vau = cur_vaus[k];
-        doWhen(() => animate(bind_result, vau),
-          () => vau_index_visual_offset === 0);
-        break;
+    } else if (input.keyboard.wasPressed(KeyCode.KeyV)) {
+      // apply all vaus to whole molecule until one works, until none of them work
+      let any_changes = true;
+      while (any_changes) {
+        any_changes = false;
+        for (let k = 0; k < cur_vaus.length; k++) {
+          const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
+          if (bind_result !== null) {
+            cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, bind_result.new_molecule);
+            any_changes = true;
+            break;
+          }
+        }
+      }
+      // } else if (input.keyboard.wasPressed(KeyCode.KeyB)) {
+      //   // same as Z but with animation
+      //   const bind_result = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+      //   if (bind_result !== null) {
+      //     animate({
+      //       bindings: bind_result.bindings,
+      //       new_molecule: bind_result.new_molecule,
+      //       bound_at: []
+      //     }, cur_vau);
+      //   }
+      // } else if (input.keyboard.wasPressed(KeyCode.KeyN)) {
+      //   // same as X (cur vau, whole molecule) but with animation
+      //   const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
+      //   if (bind_result !== null) {
+      //     animate(bind_result, cur_vau);
+      //   }
+      // } else if (input.keyboard.wasPressed(KeyCode.KeyM)) {
+      //   // anywhere in the molecule, with animation
+      //   let old_address = cur_molecule_address;
+      //   cur_molecule_address = [];
+      //   const bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
+      //   if (bind_result !== null) {
+      //     animate(bind_result, cur_vau);
+      //   } else {
+      //     cur_molecule_address = old_address;
+      //   }
+    } else if (input.keyboard.wasPressed(KeyCode.Space)) {
+      // any vau, anywhere in the molecule, with animation
+      for (let k = 0; k < cur_vaus.length; k++) {
+        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+        if (bind_result !== null) {
+          cur_molecule_view.animateToAdress(bind_result.bound_at);
+          vau_index_visual_offset += k - cur_vau_index;
+          cur_vau_index = k;
+          let vau = cur_vaus[k];
+          doWhen(() => animate(bind_result, vau),
+            () => vau_index_visual_offset === 0);
+          break;
+        }
       }
     }
   }
@@ -1429,7 +1437,7 @@ function game_frame(delta_time: number) {
   strokeRect(ctx, vauToolbarRect(cur_vau_index - vau_index_visual_offset))
   cur_vaus.forEach((_vau, k) => {
     let cur_rect = vauToolbarRect(k);
-    if (cur_rect.contains(mouse_pos)) {
+    if (canInteract() && cur_rect.contains(mouse_pos)) {
       ctx.strokeStyle = "cyan";
       strokeRect(ctx, cur_rect);
       ctx.strokeStyle = "black";
@@ -1441,7 +1449,7 @@ function game_frame(delta_time: number) {
   });
   if (vau_index_visual_offset === 0) {
     let base_rect = vauToolbarRect(cur_vau_index);
-    let asdf = Rectangle.fromParams({bottomLeft: base_rect.topLeft, size: base_rect.size.scale(1/3)});
+    let asdf = Rectangle.fromParams({ bottomLeft: base_rect.topLeft, size: base_rect.size.scale(1 / 3) });
     if (cur_vau_index > 0 && button("<", asdf)) {
       let temp = cur_vaus[cur_vau_index];
       cur_vaus[cur_vau_index] = cur_vaus[cur_vau_index - 1];
@@ -1469,7 +1477,7 @@ function game_frame(delta_time: number) {
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(0, 1), size: new Vec2(50, 50) }))) {
     cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
     cur_vau_index += 1;
-      save_cur_level();
+    save_cur_level();
   }
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length, 1), size: new Vec2(50, 50) }))) {
     cur_vaus.push(cloneSexpr(default_vau) as Pair);
@@ -1540,6 +1548,10 @@ function game_frame(delta_time: number) {
     } else if (molecule_mouse_path !== null) {
       cur_mouse_place = { type: "molecule", molecule_address: molecule_mouse_path };
     } else {
+      cur_mouse_place = { type: "none" };
+    }
+
+    if (!canInteract()) {
       cur_mouse_place = { type: "none" };
     }
   }
