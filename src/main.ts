@@ -83,6 +83,10 @@ function fillRect(ctx: CanvasRenderingContext2D, rect: Rectangle) {
   ctx.fillRect(rect.topLeft.x, rect.topLeft.y, rect.size.x, rect.size.y);
 }
 
+function strokeRect(ctx: CanvasRenderingContext2D, rect: Rectangle) {
+  ctx.strokeRect(rect.topLeft.x, rect.topLeft.y, rect.size.x, rect.size.y);
+}
+
 function moveTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
   ctx.moveTo(x, y);
 }
@@ -102,7 +106,7 @@ const base_molecule_view: MoleculeView = {
   halfside: Math.floor(canvas_size.y * .2),
 };
 const target_view: MoleculeView = {
-  pos: canvas_size.mul(new Vec2(.2, .9)),
+  pos: canvas_size.mul(new Vec2(.05, .1)),
   halfside: 35,
 };
 
@@ -124,7 +128,7 @@ let animation_state: {
 } | null = null;
 
 function offsetVauView(view: VauView, vertical_offset: number): VauView {
-  return { pos: view.pos.addY(canvas_size.y * vertical_offset / 2), halfside: view.halfside };
+  return { pos: view.pos.addY(canvas_size.y * vertical_offset), halfside: view.halfside };
 }
 
 const default_vau: Pair = parseSexpr(`(
@@ -769,12 +773,14 @@ let mouse_state: {
 } = { type: "none" };
 
 const toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = fromCount(11, k => {
-  return { view: { pos: new Vec2(40 + 60 * k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
+  return { view: { pos: new Vec2(340 + 60 * k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
 });
 
 const toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = fromCount(7, k => {
-  return { view: { pos: new Vec2(100 + 95 * k, 100), halfside: 20 }, value: doAtom(`@${k}`), used: false };
+  return { view: { pos: new Vec2(400 + 95 * k, 100), halfside: 20 }, value: doAtom(`@${k}`), used: false };
 });
+
+// let toolbar_vaus: {}
 
 function doList(values: Sexpr[]): Sexpr {
   let result = doAtom('0') as Sexpr;
@@ -1412,11 +1418,22 @@ function game_frame(delta_time: number) {
   toolbar_atoms.forEach(({ view, value }) => drawMolecule(value, view));
   toolbar_templates.forEach(({ view, value }) => drawMatcher(value, view));
 
+  // vau toolbar
+  cur_vaus.forEach((vau, k) => {
+    drawVau(vau, {
+      pos: canvas_size.mulXY(.1 + k * .1, .95),
+      halfside: base_vau_view.halfside * .15
+    })
+  });
+  strokeRect(ctx, Rectangle.fromParams({
+    bottomLeft: canvas_size.mulXY(.06 + .1 * (cur_vau_index - vau_index_visual_offset), 1),
+    size: canvas_size.mulXY(.09, .1),
+  }))
+
   const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   {
     // menu button
-    if (button("Menu", Rectangle.fromParams({topRight: canvas_size.mulXY(1,0), size: new Vec2(150, 50)}))) {
-    // if (button("Menu", Rectangle.fromParams((new Vec2(canvas_size.x * .85, 0), new Vec2(canvas_size.x * .15, canvas_size.x * .1)))) {
+    if (button("Menu", Rectangle.fromParams({ topRight: canvas_size.mulXY(1, 0), size: new Vec2(150, 50) }))) {
       save_cur_level();
       STATE = "menu"
       return;
@@ -1426,14 +1443,14 @@ function game_frame(delta_time: number) {
   {
     // select test case
     if (cur_test_case > 0) {
-      if (button('<', Rectangle.fromParams({ bottomLeft: new Vec2(0, canvas.height), size: new Vec2(50, 50) }))) {
+      if (button('<', Rectangle.fromParams({ topLeft: new Vec2(0, 0), size: new Vec2(50, 50) }))) {
         cur_test_case -= 1;
         [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
         cur_molecule_address = [];
         cur_molecule_view.instantlyUpdateTarget();
       }
     }
-    if (button('>', Rectangle.fromParams({ bottomLeft: new Vec2(150, canvas.height), size: new Vec2(50, 50) }))) {
+    if (button('>', Rectangle.fromParams({ topLeft: new Vec2(150, 0), size: new Vec2(50, 50) }))) {
       cur_test_case += 1;
       [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
       cur_molecule_address = [];
@@ -1441,7 +1458,7 @@ function game_frame(delta_time: number) {
     }
 
     ctx.fillStyle = "black";
-    fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, canvas.height - 25));
+    fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, 25));
   }
 
   let cur_mouse_place: MoleculePlace;

@@ -201,6 +201,14 @@ export class Vec2 {
         );
     }
 
+    div(other: Vec2): Vec2 {
+        return new Vec2(
+            this.x / other.x,
+            this.y / other.y,
+        );
+    }
+
+
     mulXY(x: number, y: number): Vec2 {
         return new Vec2(
             this.x * x,
@@ -324,6 +332,12 @@ export class Rectangle {
         } else if (params.topRight !== undefined) {
             if (params.size !== undefined) {
                 return new Rectangle(params.topRight.subX(params.size.x), params.size); 
+            } else {
+                throw new Error("unimplemented");
+            }
+        } else if (params.bottomRight !== undefined) {
+            if (params.size !== undefined) {
+                return new Rectangle(params.bottomRight.sub(params.size), params.size); 
             } else {
                 throw new Error("unimplemented");
             }
