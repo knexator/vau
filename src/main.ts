@@ -1375,6 +1375,8 @@ function game_frame(delta_time: number) {
     }
   }
 
+  const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
+
   // TODO: animate view selection at the same time as vau selection
 
   pending_dowhens = pending_dowhens.filter(({ action, condition }) => {
@@ -1407,13 +1409,12 @@ function game_frame(delta_time: number) {
   } else {
     drawVau(cur_vau, offsetVauView(base_vau_view, vau_index_visual_offset));
   }
-  if (cur_vau_index > 0) {
-    drawVau(cur_vaus[cur_vau_index - 1], offsetVauView(base_vau_view, -1 + vau_index_visual_offset));
-  }
-  if (cur_vau_index + 1 < cur_vaus.length) {
-    drawVau(cur_vaus[cur_vau_index + 1], offsetVauView(base_vau_view, 1 + vau_index_visual_offset));
-  }
-  vau_index_visual_offset = towards(vau_index_visual_offset, 0, delta_time / .2);
+  cur_vaus.forEach((vau, k) => {
+    if (k !== cur_vau_index) {
+      drawVau(vau, offsetVauView(base_vau_view, k - cur_vau_index + vau_index_visual_offset));
+    }
+  })
+  vau_index_visual_offset = towards(vau_index_visual_offset, 0, Math.ceil(Math.abs(vau_index_visual_offset) * .8 + .1) * delta_time / .2);
 
   toolbar_atoms.forEach(({ view, value }) => drawMolecule(value, view));
   toolbar_templates.forEach(({ view, value }) => drawMatcher(value, view));
@@ -1425,12 +1426,56 @@ function game_frame(delta_time: number) {
       halfside: base_vau_view.halfside * .15
     })
   });
-  strokeRect(ctx, Rectangle.fromParams({
-    bottomLeft: canvas_size.mulXY(.06 + .1 * (cur_vau_index - vau_index_visual_offset), 1),
-    size: canvas_size.mulXY(.09, .1),
-  }))
+  strokeRect(ctx, vauToolbarRect(cur_vau_index - vau_index_visual_offset))
+  cur_vaus.forEach((_vau, k) => {
+    let cur_rect = vauToolbarRect(k);
+    if (cur_rect.contains(mouse_pos)) {
+      ctx.strokeStyle = "cyan";
+      strokeRect(ctx, cur_rect);
+      ctx.strokeStyle = "black";
+      if (input.mouse.wasPressed(MouseButton.Left)) {
+        vau_index_visual_offset += k - cur_vau_index;
+        cur_vau_index = k;
+      }
+    }
+  });
+  if (vau_index_visual_offset === 0) {
+    let base_rect = vauToolbarRect(cur_vau_index);
+    let asdf = Rectangle.fromParams({bottomLeft: base_rect.topLeft, size: base_rect.size.scale(1/3)});
+    if (cur_vau_index > 0 && button("<", asdf)) {
+      let temp = cur_vaus[cur_vau_index];
+      cur_vaus[cur_vau_index] = cur_vaus[cur_vau_index - 1];
+      cur_vaus[cur_vau_index - 1] = temp;
+      cur_vau_index -= 1;
+      save_cur_level();
+    }
+    asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
+    if (cur_vaus.length > 1 && button("X", asdf)) {
+      cur_vaus.splice(cur_vau_index, 1);
+      if (cur_vau_index === cur_vaus.length) {
+        cur_vau_index -= 1;
+      }
+      save_cur_level();
+    }
+    asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
+    if ((cur_vau_index + 1) < cur_vaus.length && button(">", asdf)) {
+      let temp = cur_vaus[cur_vau_index];
+      cur_vaus[cur_vau_index] = cur_vaus[cur_vau_index + 1];
+      cur_vaus[cur_vau_index + 1] = temp;
+      cur_vau_index += 1;
+      save_cur_level();
+    }
+  }
+  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(0, 1), size: new Vec2(50, 50) }))) {
+    cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
+    cur_vau_index += 1;
+      save_cur_level();
+  }
+  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length, 1), size: new Vec2(50, 50) }))) {
+    cur_vaus.push(cloneSexpr(default_vau) as Pair);
+    save_cur_level();
+  }
 
-  const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   {
     // menu button
     if (button("Menu", Rectangle.fromParams({ topRight: canvas_size.mulXY(1, 0), size: new Vec2(150, 50) }))) {
@@ -1605,6 +1650,13 @@ function game_frame(delta_time: number) {
     }
     default:
       throw new Error("");
+  }
+
+  function vauToolbarRect(index: number): Rectangle {
+    return Rectangle.fromParams({
+      bottomLeft: canvas_size.mulXY(.06 + .1 * index, 1),
+      size: canvas_size.mulXY(.09, .1),
+    });
   }
 }
 
