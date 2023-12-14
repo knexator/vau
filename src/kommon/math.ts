@@ -201,6 +201,13 @@ export class Vec2 {
         );
     }
 
+    mulXY(x: number, y: number): Vec2 {
+        return new Vec2(
+            this.x * x,
+            this.y * y,
+        );
+    }
+
     scale(factor: number): Vec2 {
         return new Vec2(
             this.x * factor,

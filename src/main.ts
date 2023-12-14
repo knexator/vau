@@ -44,7 +44,7 @@ const canvas_size = new Vec2(canvas.width, canvas.height);
 const gfx = new NaiveSpriteGraphics(gl);
 // const gfx2 = new ShakuStyleGraphics(gl);
 
-const DEBUG = true;
+const DEBUG = false;
 
 // The variables we might want to tune while playing
 const CONFIG = {
@@ -99,7 +99,7 @@ let cur_target = parseSexpr("(1 1 1 1 1 1)");
 let cur_molecule_address = [] as Address;
 const base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
-  halfside: 150,
+  halfside: Math.floor(canvas_size.y * .2),
 };
 const target_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.2, .9)),
@@ -107,8 +107,8 @@ const target_view: MoleculeView = {
 };
 
 const base_vau_view: VauView = {
-  pos: canvas_size.mul(new Vec2(.7, .5)).addX(CONFIG.tmp250 - 250),
-  halfside: 150,
+  pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 5),
+  halfside: base_molecule_view.halfside,
 };
 
 let animation_state: {
@@ -1204,7 +1204,7 @@ function menu_frame(delta_time: number) {
   }
 }
 
-ctx.font = `${Math.floor(canvas_size.x * .02).toString()}px Arial`;
+ctx.font = `26px Arial`;
 ctx.textBaseline = "middle";
 ctx.textAlign = "center";
 
@@ -1415,7 +1415,8 @@ function game_frame(delta_time: number) {
   const mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   {
     // menu button
-    if (button("Menu", new Rectangle(new Vec2(canvas_size.x * .85, 0), new Vec2(canvas_size.x * .15, canvas_size.x * .1)))) {
+    if (button("Menu", Rectangle.fromParams({topRight: canvas_size.mulXY(1,0), size: new Vec2(150, 50)}))) {
+    // if (button("Menu", Rectangle.fromParams((new Vec2(canvas_size.x * .85, 0), new Vec2(canvas_size.x * .15, canvas_size.x * .1)))) {
       save_cur_level();
       STATE = "menu"
       return;
