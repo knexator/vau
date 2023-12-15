@@ -204,6 +204,7 @@ type Binding = {
   address: Address,
   value: Sexpr,
 }
+
 // returns null if the template doesn't fit
 function generateBindings(molecule: Sexpr, template: Sexpr, address: Address = []): Binding[] | null {
   if (template.type === "atom") {
@@ -1082,6 +1083,26 @@ let levels: Level[] = [
   ),
 ];
 
+function isValidVau(vau: Pair): boolean {
+  function getAllTemplateNames(v: Sexpr) : string[] {
+    if (v.type === "atom") {
+      if (v.value[0] === "@") {
+        return [v.value];
+      } else {
+        return [];
+      }
+    } else {
+      return [...getAllTemplateNames(v.left), ...getAllTemplateNames(v.right)];
+    }
+  }
+  let source_templates = getAllTemplateNames(vau.left);
+  // no repeated templates
+  if (new Set(source_templates).size < source_templates.length) return false;
+  // no orphan templates
+  if (getAllTemplateNames(vau.right).some(x => !source_templates.includes(x))) return false;
+  return true;
+}
+
 function canInteract() {
   return (vau_index_visual_offset === 0) && (animation_state === null);
 }
@@ -1559,7 +1580,7 @@ function game_frame(delta_time: number) {
     }
   }
 
-  {
+  if (isValidVau(cur_vau)) {
     // timeline controls
     if (animation_state !== null && animation_state.speed === 0) {
       strokeRect(ctx, Rectangle
@@ -1621,6 +1642,8 @@ function game_frame(delta_time: number) {
         }
       }
     }
+  } else {
+    fillText(ctx, "invalid vau", new Vec2(canvas_size.x - 175, 75));
   }
 
   {
