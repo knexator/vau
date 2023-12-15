@@ -303,6 +303,14 @@ function isValidAddress(molecule: Sexpr, address: Address): boolean {
 
 const colorFromAtom: (atom: string) => Color = (() => {
   let generated = new Map<string, Color>();
+  generated.set("nil", new Color(.5, .5, .5));
+  generated.set("true", new Color(.5, .9, .5));
+  generated.set("false", new Color(.9, .5, .5));
+  generated.set("input", new Color(.1, .6, .6));
+  generated.set("output", Color.fromInt(0xb8a412));
+  generated.set("v1", new Color(.9, .9, .3));
+  generated.set("v2", new Color(.3, .9, .9));
+  generated.set("v3", new Color(.9, .3, .9));
   return (atom: string) => {
     let color = generated.get(atom)
     if (color !== undefined) {
@@ -777,7 +785,13 @@ let mouse_state: {
   source: MoleculePlace,
 } = { type: "none" };
 
-const toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = fromCount(11, k => {
+const misc_atoms = "v1,v2,v3".split(",").map(doAtom);
+const toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = [doPair(doAtom("nil"), doAtom("nil")), ...(
+  ["nil", "true", "false", "input", "output", "v1", "v2", "v3"].map(doAtom))].map((value, k) => {
+    return { value, view: { pos: new Vec2(340 + 60 * k, 40), halfside: 20 } };
+  });
+
+fromCount(11, k => {
   return { view: { pos: new Vec2(340 + 60 * k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
 });
 
@@ -788,7 +802,7 @@ const toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = from
 // let toolbar_vaus: {}
 
 function doList(values: Sexpr[]): Sexpr {
-  let result = doAtom('0') as Sexpr;
+  let result = doAtom("nil") as Sexpr;
   reversedForEach(values, v => {
     result = doPair(v, result);
   });
@@ -836,17 +850,24 @@ let levels: Level[] = [
     "anyred",
     "Spike Detector:\nSome of our neutral samples have been\ncontaminated with spiky proteins,\nmake a detector for any spiky bits.",
     (rand) => {
-      let final_has_red = rand.next() > .5;
+      let final_has_red = rand.next() > .3;
       function helper(has_red: boolean, depth: number): Sexpr {
         if (depth === 0) {
           if (has_red) {
-            return doAtom('2');
+            return doAtom("false");
           } else {
-            return doAtom('3');
+            return doAtom("true");
           }
         } else {
-          let left_has_red = has_red && (rand.next() < .5);
-          let right_has_red = has_red && (!left_has_red || (rand.next() < .2));
+          let left_has_red = has_red;
+          let right_has_red = has_red;
+          if (has_red && rand.next() > .3) {
+            if (rand.next() < .5) {
+              left_has_red = false;
+            } else {
+              left_has_red = false;
+            }
+          }
           return doPair(
             helper(left_has_red, depth - 1),
             helper(right_has_red, depth - 1),
@@ -855,7 +876,7 @@ let levels: Level[] = [
       }
       return [
         helper(final_has_red, Math.floor(rand.next() * 3) + 2),
-        doAtom(final_has_red ? '2' : '3'),
+        doAtom(final_has_red ? "false" : "true"),
       ];
     }
   ),
@@ -863,16 +884,15 @@ let levels: Level[] = [
     "switch",
     "Switcheroo",
     (rand) => {
-      let atoms = fromCount(4, k => doAtom((2 + k).toString()));
-      let v1 = makeRandomSexpr(rand, 4, atoms);
-      let v2 = makeRandomSexpr(rand, 4, atoms);
+      let v1 = makeRandomSexpr(rand, 4, misc_atoms);
+      let v2 = makeRandomSexpr(rand, 4, misc_atoms);
       return [
         doPair(
-          doAtom("0"),
+          doAtom("input"),
           doPair(v1, v2)
         ),
         doPair(
-          doAtom("1"),
+          doAtom("output"),
           doPair(v2, v1)
         ),
       ];
@@ -894,18 +914,18 @@ let levels: Level[] = [
     "reverse",
     "List Reverse:\nReverse the given nil-terminated list.",
     (rand) => {
-      const atoms = ['4', '5', '6', '7', '8'];
       function randomSexpr(max_depth: number): Sexpr {
-        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        if (max_depth === 0) return randomChoice(rand, misc_atoms);
         return doPair(
           randomSexpr(Math.floor(rand.next() * max_depth)),
           randomSexpr(Math.floor(rand.next() * max_depth)),
         );
       }
-      let asdf = fromCount(randomInt(rand, 0, 4), _ => randomSexpr(randomInt(rand, 1, 3)));
+      // let asdf = fromCount(randomInt(rand, 0, 4), _ => randomSexpr(randomInt(rand, 1, 3)));
+      let asdf = fromCount(randomInt(rand, 0, 4), _ => randomSexpr(0));
       return [
         doPair(
-          doAtom('1'),
+          doAtom("input"),
           doList(asdf),
         ),
         doList(reversed(asdf)),
@@ -914,18 +934,17 @@ let levels: Level[] = [
   ),
   new Level(
     "equal",
-    "Equality Check:\nReturn spiky only if both molecules are equal.",
+    "Equality Check:\nReturn spiky when both molecules are different.",
     (rand) => {
       let generate_equal = rand.next() > .5;
-      const atoms = ['4', '5', '6'];
       function helper(equal: boolean, max_depth: number): [Sexpr, Sexpr] {
         if (max_depth === 0) {
-          let v1 = randomChoice(rand, atoms);
-          let v2 = randomChoice(rand, atoms);
+          let v1 = randomChoice(rand, misc_atoms);
+          let v2 = randomChoice(rand, misc_atoms);
           while (v2 === v1) {
-            v2 = randomChoice(rand, atoms);
+            v2 = randomChoice(rand, misc_atoms);
           }
-          return [doAtom(v1), doAtom(equal ? v1 : v2)];
+          return [v1, equal ? v1 : v2];
         } else {
           let lefts = helper(equal, Math.floor(rand.next() * max_depth));
           let rights = helper(equal, Math.floor(rand.next() * max_depth));
@@ -937,10 +956,10 @@ let levels: Level[] = [
       }
       return [
         doPair(
-          doAtom('1'),
+          doAtom("input"),
           doPair(...helper(generate_equal, Math.floor(rand.next() * 5))),
         ),
-        doAtom(generate_equal ? '2' : '3'),
+        doAtom(generate_equal ? "true" : "false"),
       ]
     }
   ),
@@ -948,19 +967,18 @@ let levels: Level[] = [
     "lookup",
     "Lookup Table:\nGiven a list of (key, value) pairs and a key,\nreturn the value associated with it.",
     (rand) => {
-      const atoms = ['4', '5', '6', '7', '8'];
       function randomSexpr(max_depth: number): Sexpr {
-        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        if (max_depth === 0) return randomChoice(rand, misc_atoms);
         return doPair(
           randomSexpr(Math.floor(rand.next() * max_depth)),
           randomSexpr(Math.floor(rand.next() * max_depth)),
         );
       }
-      let keys = randomChoiceWithoutRepeat(rand, atoms, randomInt(rand, 1, atoms.length));
-      let dict_values = keys.map(v => doPair(doAtom(v), randomSexpr(4)));
+      let keys = randomChoiceWithoutRepeat(rand, misc_atoms, randomInt(rand, 1, misc_atoms.length));
+      let dict_values = keys.map(v => doPair(v, randomSexpr(4)));
       let selected = randomChoice(rand, dict_values);
       return [doPair(
-        doAtom('1'),
+        doAtom("input"),
         doPair(
           doList(dict_values),
           selected.left
@@ -972,10 +990,9 @@ let levels: Level[] = [
     "cadadar_easy",
     "CADADADAR easy",
     (rand) => {
-      const atoms = ['5', '6', '7', '8'];
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
-        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        if (max_depth === 0) return randomChoice(rand, misc_atoms);
         if (must_have.length === 0) {
           return doPair(
             randomSexpr(Math.floor(rand.next() * max_depth), []),
@@ -1001,9 +1018,9 @@ let levels: Level[] = [
       let result = getAtAddress(asdf, address);
       return [
         doPair(
-          doAtom('1'),
+          doAtom("input"),
           doPair(
-            doList(address.map(v => doAtom(v ? '2' : '3'))),
+            doList(address.map(v => doAtom(v ? "true" : "false"))),
             asdf
           )
         ),
@@ -1015,10 +1032,9 @@ let levels: Level[] = [
     "cadadar_hard",
     "CADADADAR hard",
     (rand) => {
-      const atoms = ['5', '6', '7', '8'];
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
-        if (max_depth === 0) return doAtom(randomChoice(rand, atoms));
+        if (max_depth === 0) return randomChoice(rand, misc_atoms);
         if (must_have.length === 0) {
           return doPair(
             randomSexpr(Math.floor(rand.next() * max_depth), []),
@@ -1044,11 +1060,11 @@ let levels: Level[] = [
       let result = getAtAddress(asdf, address);
       let problem = asdf;
       address.forEach(v => {
-        problem = doPair(doAtom(v ? '2' : '3'), problem);
+        problem = doPair(doAtom(v ? "true" : "false"), problem);
       });
       return [
         doPair(
-          doAtom('1'),
+          doAtom("input"),
           problem
         ),
         result
@@ -1101,9 +1117,9 @@ function save_cur_level() {
 }
 
 function makePeanoSexpr(n: number): Sexpr {
-  let result: Sexpr = doAtom('0');
+  let result: Sexpr = doAtom("nil");
   for (let k = 0; k < n; k++) {
-    result = doPair(doAtom('1'), result);
+    result = doPair(doAtom("true"), result);
   }
   return result;
 }
@@ -1548,7 +1564,7 @@ function game_frame(delta_time: number) {
           vau_index_visual_offset += k - cur_vau_index;
           cur_vau_index = k;
           let vau = cur_vaus[k];
-          doWhen(() => animate(bind_result, vau, false),
+          doWhen(() => animate(bind_result, vau, false, 2),
             () => vau_index_visual_offset === 0);
           break;
         }
@@ -1754,16 +1770,17 @@ function game_frame(delta_time: number) {
 // (0, 0) & (1, 0) are implicit
 type AtomProfile = Vec2[];
 const atom_shapes = new DefaultMap<string, AtomProfile>((_) => [], new Map(Object.entries({
-  '0': [new Vec2(.75, -.25)],
-  '1': [new Vec2(.2, .2), new Vec2(.8, .2)],
-  '2': [new Vec2(1 / 6, .2), new Vec2(.5, -.2), new Vec2(5 / 6, .2)],
-  '3': fromCount(10, k => {
+  "nil": [new Vec2(.75, -.25)],
+  "input": [new Vec2(.2, .2), new Vec2(.8, .2)],
+  "output": [new Vec2(.2, -.2), new Vec2(.8, -.2)],
+  "true": fromCount(10, k => {
     let t = k / 10;
     return new Vec2(t, -.2 * Math.sin(t * Math.PI));
   }),
-  '4': [new Vec2(.2, .2), new Vec2(.4, -.2), new Vec2(.7, .2)],
-  '5': [new Vec2(.5, .25)],
-  '6': fromCount(2, k => {
+  "false": [new Vec2(1 / 6, .2), new Vec2(.5, -.2), new Vec2(5 / 6, .2)],
+  "v1": [new Vec2(.2, .2), new Vec2(.4, -.2), new Vec2(.7, .2)],
+  "v2": [new Vec2(.5, .25)],
+  "v3": fromCount(2, k => {
     let c = (2 * k + 1) / 4;
     let s = .6 / 4;
     return [new Vec2(c - s, 0), new Vec2(c, -.25), new Vec2(c + s, 0)];
