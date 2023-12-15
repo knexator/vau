@@ -922,6 +922,7 @@ let levels: Level[] = [
     "reverse",
     "List Reverse:\nReverse the given nil-terminated list.",
     (rand) => {
+      rand.next();
       function randomSexpr(max_depth: number): Sexpr {
         if (max_depth === 0) return randomChoice(rand, misc_atoms);
         return doPair(
@@ -1264,6 +1265,8 @@ function menu_frame(delta_time: number) {
         cur_vaus = slot.vaus;
         cur_vau_index = 0;
         cur_test_case = 0;
+        cur_molecule_address = [];
+        cur_molecule_view.instantlyUpdateTarget();
         [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
         return;
       }
@@ -1563,22 +1566,32 @@ function game_frame(delta_time: number) {
         .fromParams({ topRight: new Vec2(canvas_size.x - 175, 75), size: new Vec2(50, 50) })
         .resized(new Vec2(75, 75), "center"));
     }
-    if (alwaysInteractableButton(">|", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 175, 75), size: new Vec2(50, 50) }))) {
+    if (alwaysInteractableButton(">|", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 175, 75), size: new Vec2(50, 50) }))
+      && vau_index_visual_offset === 0) {
       if (animation_state === null) {
         // any vau, anywhere in the molecule, with paused animation
-        for (let k = 0; k < cur_vaus.length; k++) {
-          const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+        let bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
+        if (bind_result === null || !eqArrays(cur_molecule_address, bind_result.bound_at)) {
+          // step 1: move to the correct vau and view
+          if (bind_result === null) {
+            for (let k = 0; k < cur_vaus.length; k++) {
+              bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+              if (null !== bind_result) {
+                vau_index_visual_offset += k - cur_vau_index;
+                cur_vau_index = k;
+                break;
+              }
+            }
+          }
           if (bind_result !== null) {
             cur_molecule_view.animateToAdress(bind_result.bound_at);
-            vau_index_visual_offset += k - cur_vau_index;
-            cur_vau_index = k;
-            let vau = cur_vaus[k];
-            doWhen(() => animate(bind_result, vau, true),
-              () => vau_index_visual_offset === 0);
-            break;
           }
+        } else {
+          // step 2: animate until bind
+          animate(bind_result, cur_vau, true);
         }
       } else {
+        // step 3: animate after bind
         animation_state.speed = 1;
       }
     }
