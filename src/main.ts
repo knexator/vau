@@ -817,6 +817,14 @@ function doAtom(value: string): Atom {
   return { type: "atom", value };
 }
 
+function eqSexprs(a: Sexpr, b: Sexpr): boolean {
+  if (a.type === "atom" && b.type === "atom") return a.value === b.value
+  if (a.type === "pair" && b.type === "pair") {
+    return eqSexprs(a.left, b.left) && eqSexprs(a.right, b.right);
+  }
+  return false;
+}
+
 class Level {
   constructor(
     public id: string,
@@ -1590,7 +1598,7 @@ function game_frame(delta_time: number) {
       }
     }
     if (continousAlwaysInteractableButton(">>", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 25, 75), size: new Vec2(50, 50) }))
-        && canInteract()) {
+      && canInteract()) {
       // apply 1 vau fast
       for (let k = 0; k < cur_vaus.length; k++) {
         const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
@@ -1624,7 +1632,7 @@ function game_frame(delta_time: number) {
       cur_molecule_view.instantlyUpdateTarget();
     }
 
-    ctx.fillStyle = "black";
+    ctx.fillStyle = eqSexprs(cur_base_molecule, cur_target) ? "lime" : "black";
     fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, 25));
   }
 
