@@ -14,6 +14,8 @@ const COLORS = {
   cons: Color.fromInt(0x404040),
 };
 
+const ALLOW_KEYBOARD_INPUT = false;
+
 // parser.parse(str)
 const parseSexpr: (input: string) => Sexpr = (() => {
   const parser = peggy.generate(grammar);
@@ -124,7 +126,9 @@ let animation_state: {
   molecule_address: Address,
   // bindings: Binding[],
   floating_binds: null | { binding: Binding, view: Anim<MoleculeView> }[],
+  failed_bind_names: string[],
   binds_done: boolean,
+  speed: number,
 } | null = null;
 
 function offsetVauView(view: VauView, vertical_offset: number): VauView {
@@ -413,7 +417,7 @@ function drawMoleculeDuringAnimation(data: Sexpr, view: MoleculeView, address: A
     drawMoleculeExceptFor(data, {
       pos: view.pos.subY(animation_state.molecule_fade * base_vau_view.halfside / 2),
       halfside: view.halfside,
-    }, (animation_state.floating_binds === null) ? [] : animation_state.floating_binds.map(x => x.binding.address), address);
+    }, (animation_state.floating_binds === null) ? [] : animation_state.floating_binds.map(x => [...animation_state!.molecule_address, ...x.binding.address]), address);
     ctx.globalAlpha = 1;
   } else {
     drawMoleculeNonRecursive(data, view);
@@ -515,7 +519,8 @@ function matcherAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: Va
 
 function drawMatcherDuringAnimation(data: Sexpr, view: VauView) {
   if (animation_state === null) throw new Error("");
-  if (animation_state.floating_binds !== null && data.type === "atom" && data.value[0] === "@") return;
+  if (animation_state.floating_binds !== null && data.type === "atom"
+    && data.value[0] === "@" && !animation_state.failed_bind_names.includes(data.value)) return;
   drawMatcherNonRecursive(data, view);
   if (data.type === "pair") {
     drawMatcherDuringAnimation(data.left, getMatcherChildView(view, true));
@@ -1129,6 +1134,21 @@ function button(text: string, rect: Rectangle): boolean {
   return pressed;
 }
 
+function alwaysInteractableButton(text: string, rect: Rectangle): boolean {
+  let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
+  let pressed = false;
+  if (rect.contains(mouse_pos)) {
+    ctx.fillStyle = "#BBBBBB";
+    pressed = input.mouse.wasPressed(MouseButton.Left);
+  } else {
+    ctx.fillStyle = "#444444";
+  }
+  fillRect(ctx, rect);
+  ctx.fillStyle = "black";
+  fillText(ctx, text, rect.getCenter());
+  return pressed;
+}
+
 let last_timestamp = 0;
 // main loop; game logic lives here
 function every_frame(cur_timestamp: number) {
@@ -1219,7 +1239,7 @@ ctx.textBaseline = "middle";
 ctx.textAlign = "center";
 
 function game_frame(delta_time: number) {
-  if (canInteract()) {
+  if (ALLOW_KEYBOARD_INPUT && canInteract()) {
     if (input.keyboard.wasPressed(KeyCode.KeyA)) {
       if (cur_molecule_address.length > 0) {
         cur_molecule_address.pop();
@@ -1304,7 +1324,7 @@ function game_frame(delta_time: number) {
   }
   const cur_vau = cur_vaus[cur_vau_index];
 
-  if (canInteract()) {
+  if (ALLOW_KEYBOARD_INPUT && canInteract()) {
     if (input.keyboard.wasPressed(KeyCode.KeyZ)) {
       // apply current vau to current molecule
       const new_molecule = afterVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vau);
@@ -1375,7 +1395,7 @@ function game_frame(delta_time: number) {
           vau_index_visual_offset += k - cur_vau_index;
           cur_vau_index = k;
           let vau = cur_vaus[k];
-          doWhen(() => animate(bind_result, vau),
+          doWhen(() => animate(bind_result, vau, false),
             () => vau_index_visual_offset === 0);
           break;
         }
@@ -1403,10 +1423,10 @@ function game_frame(delta_time: number) {
   }
   drawMolecule(cur_target, target_view);
   if (animation_state !== null) {
-    drawVauDuringAnimtion(cur_vau, advanceAnim(animation_state.animating_vau_view, delta_time));
+    drawVauDuringAnimtion(cur_vau, advanceAnim(animation_state.animating_vau_view, animation_state.speed * delta_time));
     if (animation_state.floating_binds !== null) {
       animation_state.floating_binds.forEach(({ binding, view }) => {
-        drawMolecule(binding.value, advanceAnim(view, delta_time));
+        drawMolecule(binding.value, advanceAnim(view, animation_state!.speed * delta_time));
         drawBigBind(binding.name, advanceAnim(view, 0));
       })
     }
@@ -1490,6 +1510,64 @@ function game_frame(delta_time: number) {
       save_cur_level();
       STATE = "menu"
       return;
+    }
+  }
+
+  {
+    // timeline controls
+    if (animation_state !== null && animation_state.speed === 0) {
+      strokeRect(ctx, Rectangle
+        .fromParams({ topRight: new Vec2(canvas_size.x - 175, 75), size: new Vec2(50, 50) })
+        .resized(new Vec2(75, 75), "center"));
+    }
+    if (alwaysInteractableButton(">|", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 175, 75), size: new Vec2(50, 50) }))) {
+      if (animation_state === null) {
+        // any vau, anywhere in the molecule, with paused animation
+        for (let k = 0; k < cur_vaus.length; k++) {
+          const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+          if (bind_result !== null) {
+            cur_molecule_view.animateToAdress(bind_result.bound_at);
+            vau_index_visual_offset += k - cur_vau_index;
+            cur_vau_index = k;
+            let vau = cur_vaus[k];
+            doWhen(() => animate(bind_result, vau, true),
+              () => vau_index_visual_offset === 0);
+            break;
+          }
+        }
+      } else {
+        animation_state.speed = 1;
+      }
+    }
+    if (button(">", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 100, 75), size: new Vec2(50, 50) }))) {
+      // any vau, anywhere in the molecule, with animation
+      for (let k = 0; k < cur_vaus.length; k++) {
+        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+        if (bind_result !== null) {
+          cur_molecule_view.animateToAdress(bind_result.bound_at);
+          vau_index_visual_offset += k - cur_vau_index;
+          cur_vau_index = k;
+          let vau = cur_vaus[k];
+          doWhen(() => animate(bind_result, vau, false),
+            () => vau_index_visual_offset === 0);
+          break;
+        }
+      }
+    }
+    if (button(">>", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 25, 75), size: new Vec2(50, 50) }))) {
+      // apply 1 vau fast
+      for (let k = 0; k < cur_vaus.length; k++) {
+        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+        if (bind_result !== null) {
+          cur_molecule_view.animateToAdress(bind_result.bound_at);
+          // vau_index_visual_offset += k - cur_vau_index;
+          vau_index_visual_offset = 0;
+          cur_vau_index = k;
+          let vau = cur_vaus[k];
+          animate(bind_result, vau, false, 5);
+          break;
+        }
+      }
     }
   }
 
@@ -1694,7 +1772,12 @@ const atom_shapes = new DefaultMap<string, AtomProfile>((_) => [], new Map(Objec
   // '5': 
 })));
 
-function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings: Binding[]; }, cur_vau: Pair) {
+function animate(
+  bind_result: { bound_at: Address; new_molecule: Sexpr; bindings: Binding[]; },
+  cur_vau: Pair,
+  pause_after_binding: boolean,
+  speed: number = 1,
+) {
   let bind_targets = bind_result.bindings.map(b => {
     return {
       binding: b,
@@ -1702,11 +1785,13 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
     };
   });
   animation_state = {
+    speed: speed,
     molecule_fade: 0,
     binds_done: false,
     vau_molecule_opacity: 1,
     molecule_address: bind_result.bound_at,
     floating_binds: null,
+    failed_bind_names: bind_targets.filter(({ targets }) => targets.length === 0).map(({ binding }) => binding.name),
     animating_vau_view: {
       progress: 0,
       duration: 2.0,
@@ -1723,7 +1808,6 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
           t = remap(t, 1 / 3, 2 / 3, 0, 1);
           animation_state.molecule_fade = t;
           if (animation_state.floating_binds === null) {
-            console.log(bind_result.bindings, bind_targets);
             animation_state.floating_binds = bind_result.bindings.flatMap(b => {
               return bind_targets.find(x => x.binding === b)!.targets.map(target => {
                 return {
@@ -1740,6 +1824,9 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
                 };
               });
             });
+            if (pause_after_binding) {
+              animation_state.speed = 0;
+            }
           }
           return {
             halfside: base_vau_view.halfside,
@@ -1765,6 +1852,7 @@ function animate(bind_result: { bound_at: Address; new_molecule: Sexpr; bindings
     },
     transformed_base_molecule: bind_result.new_molecule,
   };
+  console.log(animation_state.failed_bind_names);
 }
 
 let pending_dowhens: { action: () => void, condition: () => boolean }[] = [];

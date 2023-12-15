@@ -151,9 +151,10 @@ export class Vec2 {
 
     static readonly zero = new Vec2(0, 0);
     static readonly one = new Vec2(1, 1);
-    
+    static readonly half = new Vec2(.5, .5);
+
     static both(v: number): Vec2 {
-        return new Vec2(v,v);
+        return new Vec2(v, v);
     }
 
     angleTo(other: Vec2): number {
@@ -288,6 +289,10 @@ export class Rectangle {
         return this.topLeft.add(this.size.scale(.5));
     }
 
+    resized(new_size: Vec2, fixed: "center"): Rectangle {
+        return Rectangle.fromParams({ center: this.getCenter(), size: new_size });
+    }
+
     static readonly unit = new Rectangle(Vec2.zero, Vec2.one);
 
     static fromParams(params: {
@@ -325,19 +330,19 @@ export class Rectangle {
             return new Rectangle(topLeft, size);
         } else if (params.bottomLeft !== undefined) {
             if (params.size !== undefined) {
-                return new Rectangle(params.bottomLeft.subY(params.size.y), params.size); 
+                return new Rectangle(params.bottomLeft.subY(params.size.y), params.size);
             } else {
                 throw new Error("unimplemented");
             }
         } else if (params.topRight !== undefined) {
             if (params.size !== undefined) {
-                return new Rectangle(params.topRight.subX(params.size.x), params.size); 
+                return new Rectangle(params.topRight.subX(params.size.x), params.size);
             } else {
                 throw new Error("unimplemented");
             }
         } else if (params.bottomRight !== undefined) {
             if (params.size !== undefined) {
-                return new Rectangle(params.bottomRight.sub(params.size), params.size); 
+                return new Rectangle(params.bottomRight.sub(params.size), params.size);
             } else {
                 throw new Error("unimplemented");
             }
