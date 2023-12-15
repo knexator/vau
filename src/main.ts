@@ -787,7 +787,7 @@ let mouse_state: {
 
 const misc_atoms = "v1,v2,v3".split(",").map(doAtom);
 const toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = [doPair(doAtom("nil"), doAtom("nil")), ...(
-  ["nil", "true", "false", "input", "output", "v1", "v2", "v3"].map(doAtom))].map((value, k) => {
+  ["nil", "true", "false", "input", "output", "v1", "v2", "v3", "f1", "f2"].map(doAtom))].map((value, k) => {
     return { value, view: { pos: new Vec2(340 + 60 * k, 40), halfside: 20 } };
   });
 
@@ -1141,6 +1141,25 @@ function button(text: string, rect: Rectangle): boolean {
   if (canInteract() && rect.contains(mouse_pos)) {
     ctx.fillStyle = "#BBBBBB";
     pressed = input.mouse.wasPressed(MouseButton.Left);
+  } else {
+    ctx.fillStyle = "#444444";
+  }
+  fillRect(ctx, rect);
+  ctx.fillStyle = "black";
+  fillText(ctx, text, rect.getCenter());
+  return pressed;
+}
+
+function continousAlwaysInteractableButton(text: string, rect: Rectangle): boolean {
+  let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
+  let pressed = false;
+  if (rect.contains(mouse_pos)) {
+    if (input.mouse.isDown(MouseButton.Left)) {
+      pressed = true;
+      ctx.fillStyle = "#BBBBBB";
+    } else {
+      ctx.fillStyle = "#999999";
+    }
   } else {
     ctx.fillStyle = "#444444";
   }
@@ -1570,7 +1589,8 @@ function game_frame(delta_time: number) {
         }
       }
     }
-    if (button(">>", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 25, 75), size: new Vec2(50, 50) }))) {
+    if (continousAlwaysInteractableButton(">>", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 25, 75), size: new Vec2(50, 50) }))
+        && canInteract()) {
       // apply 1 vau fast
       for (let k = 0; k < cur_vaus.length; k++) {
         const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
