@@ -1570,25 +1570,20 @@ function game_frame(delta_time: number) {
       && vau_index_visual_offset === 0) {
       if (animation_state === null) {
         // any vau, anywhere in the molecule, with paused animation
-        let bind_result = afterRecursiveVau(cur_base_molecule, cur_vau);
-        if (bind_result === null || !eqArrays(cur_molecule_address, bind_result.bound_at)) {
-          // step 1: move to the correct vau and view
-          if (bind_result === null) {
-            for (let k = 0; k < cur_vaus.length; k++) {
-              bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
-              if (null !== bind_result) {
-                vau_index_visual_offset += k - cur_vau_index;
-                cur_vau_index = k;
-                break;
-              }
+        for (let k = 0; k < cur_vaus.length; k++) {
+          let bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+          if (null !== bind_result) {
+            if (k !== cur_vau_index || !eqArrays(bind_result.bound_at, cur_molecule_address)) {
+              // step 1: move to the correct vau and view
+              vau_index_visual_offset += k - cur_vau_index;
+              cur_vau_index = k;
+              cur_molecule_view.animateToAdress(bind_result.bound_at);
+            } else {
+              // step 2: animate until bind
+              animate(bind_result, cur_vau, true);
             }
+            break;
           }
-          if (bind_result !== null) {
-            cur_molecule_view.animateToAdress(bind_result.bound_at);
-          }
-        } else {
-          // step 2: animate until bind
-          animate(bind_result, cur_vau, true);
         }
       } else {
         // step 3: animate after bind
