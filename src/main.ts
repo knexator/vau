@@ -448,13 +448,19 @@ function drawMoleculeDuringAnimation(data: Sexpr, view: MoleculeView, address: A
   }
 }
 
-function drawMoleculeHighlight(view: MoleculeView, color: string) {
+function drawMoleculeHighlight(data: Sexpr, view: MoleculeView, color: string) {
   ctx.beginPath();
   ctx.strokeStyle = color;
   moveTo(ctx, view.pos.addX(-view.halfside * spike_perc));
   lineTo(ctx, view.pos.addY(-view.halfside));
-  lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
-  lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+  if (data.type === "atom" && data.value[0] === "@") {
+    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, -view.halfside)));
+    lineTo(ctx, view.pos.addX(view.halfside * (3 +spike_perc)));
+    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, view.halfside)));
+  } else {
+    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
+    lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, view.halfside)));
+  }
   lineTo(ctx, view.pos.addY(view.halfside));
   ctx.closePath();
   ctx.stroke();
@@ -503,7 +509,15 @@ function getMatcherGrandchildView(grandparent: VauView, path_to_child: Address):
 
 function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: MoleculeView): Address | null {
   const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
-  if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, (Math.abs(delta_pos.y) - 1) * spike_perc, 2)) {
+  if (!inRange(delta_pos.y, -1, 1)) return null;
+  if (data.type === "atom") {
+    let max_x = (data.value[0] === "@") ? (3 + (1-Math.abs(delta_pos.y)) * spike_perc) : 2
+    if (inRange(delta_pos.x, (Math.abs(delta_pos.y) - 1) * spike_perc, max_x)) {
+      return []
+    } else {
+      return null;
+    }
+  } else {
     // are we selecting a subchild?
     if (data.type === "pair" && delta_pos.x >= .5 - spike_perc / 2) {
       const is_left = delta_pos.y <= 0;
@@ -512,16 +526,26 @@ function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: M
         return [is_left, ...maybe_child];
       }
     }
-    // no subchild, path to this
-    return [];
-  } else {
-    return null;
+    // no subchild, stricter selection than atom:
+    if (inRange(delta_pos.x, (Math.abs(delta_pos.y) - 1) * spike_perc, .5)) {
+      // path to this
+      return [];
+    } else {
+      return null;
+    }
   }
 }
 
 function matcherAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: VauView): Address | null {
   const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
-  if (inRange(delta_pos.y, -1, 1) && inRange(delta_pos.x, -3 + (Math.abs(delta_pos.y) - 1) * spike_perc, -(Math.abs(delta_pos.y) - 1) * spike_perc)) {
+  if (!inRange(delta_pos.y, -1,1)) return null;
+  if (data.type === "atom") {
+    if (data.value[0] === "@") {
+      return inRange(delta_pos.x, -3 + (Math.abs(delta_pos.y) - 1) * spike_perc, -(Math.abs(delta_pos.y) - 1) * spike_perc) ? [] : null;
+    } else {
+      return inRange(delta_pos.x, -1, -(Math.abs(delta_pos.y) - 1) * spike_perc) ? [] : null;
+    }
+  } else {
     // are we selecting a subchild?
     if (data.type === "pair" && -delta_pos.x >= .5 - spike_perc / 2) {
       const is_left = delta_pos.y <= 0;
@@ -530,10 +554,13 @@ function matcherAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: Va
         return [is_left, ...maybe_child];
       }
     }
-    // no subchild, path to this
-    return [];
-  } else {
-    return null;
+    // no subchild, stricter selection than atom:
+    if (inRange(-delta_pos.x, (Math.abs(delta_pos.y) - 1) * spike_perc, 1)) {
+      // path to this
+      return [];
+    } else {
+      return null;
+    }
   }
 }
 
@@ -575,14 +602,22 @@ function getVauMoleculeView(view: VauView): MoleculeView {
   };
 }
 
-function drawMatcherHighlight(view: VauView, color: string) {
+function drawMatcherHighlight(data: Sexpr, view: VauView, color: string) {
   ctx.beginPath();
   ctx.strokeStyle = color;
   moveTo(ctx, view.pos.addX(view.halfside * spike_perc));
   lineTo(ctx, view.pos.addY(-view.halfside));
-  lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, -view.halfside)));
-  lineTo(ctx, view.pos.addX(-view.halfside * (3 + spike_perc)));
-  lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, view.halfside)));
+  if (data.type === "atom" && data.value[0] === "@") {
+    lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, -view.halfside)));
+    lineTo(ctx, view.pos.addX(-view.halfside * (3 + spike_perc)));
+    lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, view.halfside)));
+  } else if (data.type === "pair") {
+    lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, -view.halfside)));
+    lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 3, view.halfside)));
+  } else {
+    lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 1, -view.halfside)));
+    lineTo(ctx, view.pos.add(new Vec2(-view.halfside * 1, view.halfside)));
+  }
   lineTo(ctx, view.pos.addY(view.halfside));
   ctx.closePath();
   ctx.stroke();
@@ -1741,31 +1776,31 @@ function game_frame(delta_time: number) {
         case "none":
           break;
         case "molecule":
-          drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), "cyan");
+          drawMoleculeHighlight(getAtAddress(cur_base_molecule, cur_mouse_place.molecule_address), getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), "cyan");
           if (input.mouse.wasPressed(MouseButton.Left)) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: getAtAddress(cur_base_molecule, cur_mouse_place.molecule_address) };
           }
           break;
         case "vau_molecule":
-          drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address), "cyan");
+          drawMoleculeHighlight(getAtAddress(cur_vau.right, cur_mouse_place.vau_molecule_address), getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address), "cyan");
           if (input.mouse.wasPressed(MouseButton.Left)) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: getAtAddress(cur_vau.right, cur_mouse_place.vau_molecule_address) };
           }
           break;
         case "vau_matcher":
-          drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "cyan");
+          drawMatcherHighlight(getAtAddress(cur_vau.left, cur_mouse_place.vau_matcher_address), getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "cyan");
           if (input.mouse.wasPressed(MouseButton.Left)) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: getAtAddress(cur_vau.left, cur_mouse_place.vau_matcher_address) };
           }
           break;
         case "toolbar_atoms":
-          drawMoleculeHighlight(toolbar_atoms[cur_mouse_place.atom_index].view, "cyan");
+          drawMoleculeHighlight(toolbar_atoms[cur_mouse_place.atom_index].value, toolbar_atoms[cur_mouse_place.atom_index].view, "cyan");
           if (input.mouse.wasPressed(MouseButton.Left)) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: toolbar_atoms[cur_mouse_place.atom_index].value };
           }
           break;
         case "toolbar_templates":
-          drawMatcherHighlight(toolbar_templates[cur_mouse_place.template_index].view, "cyan");
+          drawMatcherHighlight(toolbar_templates[cur_mouse_place.template_index].value, toolbar_templates[cur_mouse_place.template_index].view, "cyan");
           if (input.mouse.wasPressed(MouseButton.Left)) {
             mouse_state = { type: "holding", source: cur_mouse_place, value: toolbar_templates[cur_mouse_place.template_index].value };
           }
@@ -1778,19 +1813,19 @@ function game_frame(delta_time: number) {
     case "holding": {
       switch (mouse_state.source.type) {
         case "molecule":
-          drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, mouse_state.source.molecule_address), "blue");
+          drawMoleculeHighlight(mouse_state.value, getGrandchildView(cur_molecule_view.cur, mouse_state.source.molecule_address), "blue");
           break;
         case "vau_molecule":
-          drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), mouse_state.source.vau_molecule_address), "blue");
+          drawMoleculeHighlight(mouse_state.value, getGrandchildView(getVauMoleculeView(base_vau_view), mouse_state.source.vau_molecule_address), "blue");
           break;
         case "vau_matcher":
-          drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, mouse_state.source.vau_matcher_address), "blue");
+          drawMatcherHighlight(mouse_state.value, getMatcherGrandchildView(base_vau_view, mouse_state.source.vau_matcher_address), "blue");
           break;
         case "toolbar_atoms":
-          drawMoleculeHighlight(getGrandchildView(toolbar_atoms[mouse_state.source.atom_index].view, []), "blue");
+          drawMoleculeHighlight(mouse_state.value, getGrandchildView(toolbar_atoms[mouse_state.source.atom_index].view, []), "blue");
           break;
         case "toolbar_templates":
-          drawMatcherHighlight(toolbar_templates[mouse_state.source.template_index].view, "blue");
+          drawMatcherHighlight(mouse_state.value, toolbar_templates[mouse_state.source.template_index].view, "blue");
           break;
         case "none":
         default:
@@ -1803,7 +1838,7 @@ function game_frame(delta_time: number) {
         case "none":
           break;
         case "molecule":
-          drawMoleculeHighlight(getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), "Chartreuse");
+          drawMoleculeHighlight(mouse_state.value, getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), "Chartreuse");
           ctx.globalAlpha = .5;
           drawMolecule(mouse_state.value, getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address));
           ctx.globalAlpha = 1;
@@ -1812,7 +1847,7 @@ function game_frame(delta_time: number) {
           }
           break;
         case "vau_molecule":
-          drawMoleculeHighlight(getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address), "Chartreuse");
+          drawMoleculeHighlight(mouse_state.value, getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address), "Chartreuse");
           ctx.globalAlpha = .5;
           drawMolecule(mouse_state.value, getGrandchildView(getVauMoleculeView(base_vau_view), cur_mouse_place.vau_molecule_address));
           ctx.globalAlpha = 1;
@@ -1821,7 +1856,7 @@ function game_frame(delta_time: number) {
           }
           break;
         case "vau_matcher":
-          drawMatcherHighlight(getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "Chartreuse");
+          drawMatcherHighlight(mouse_state.value, getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address), "Chartreuse");
           ctx.globalAlpha = .5;
           drawMatcher(mouse_state.value, getMatcherGrandchildView(base_vau_view, cur_mouse_place.vau_matcher_address));
           ctx.globalAlpha = 1;
@@ -1875,9 +1910,9 @@ const atom_shapes = new DefaultMap<string, AtomProfile>((_) => [], new Map(Objec
   // }).flat(1),
   "v2": fromCount(3, k => {
     let d = .05;
-    let raw = [new Vec2(k/3, 0), new Vec2((k+1)/3-d, .2), new Vec2((k+1)/3-d/2, .1)];
+    let raw = [new Vec2(k / 3, 0), new Vec2((k + 1) / 3 - d, .2), new Vec2((k + 1) / 3 - d / 2, .1)];
 
-    let transform = Vec2.findTransformationWithFixedOrigin({source: new Vec2(1-d/2, .1), target: new Vec2(1,0)});
+    let transform = Vec2.findTransformationWithFixedOrigin({ source: new Vec2(1 - d / 2, .1), target: new Vec2(1, 0) });
     return raw.map(transform);
   }).flat(1),
   // "v2": [new Vec2(.25, .2), new Vec2(.3, 0), new Vec2(.55, .2), new Vec2(.6, 0), new Vec2(.85, .2), new Vec2(.9, 0)],
