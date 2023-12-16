@@ -887,6 +887,11 @@ class Level {
 type SolutionSlot = {
   name: string,
   vaus: Pair[],
+  stats: null | {
+    n_vaus: number,
+    n_colors: number,
+    n_steps: number,
+  },
 };
 
 // let STATE: {
@@ -957,6 +962,7 @@ let levels: Level[] = [
     "bubbleUp",
     "...",
     (rand) => {
+      rand.next();
       const vanilla_list = fromCount(randomInt(rand, 0, 6), k => randomChoice(rand, misc_atoms));
       const inserted_list = vanilla_list.slice(0)
       inserted_list.splice(randomInt(rand, 0, vanilla_list.length + 1), 0, doAtom("f1"));
@@ -1197,12 +1203,61 @@ function randomChoice<T>(rand: Rand, arr: T[]) {
     let stuff = window.localStorage.getItem(`knexator_vau_${level.id}`);
     if (stuff !== null) {
       level.user_slots = JSON.parse(stuff);
+      // recalcScores(level);
     }
   });
 }
 
 function save_cur_level() {
   window.localStorage.setItem(`knexator_vau_${cur_level.id}`, JSON.stringify(cur_level.user_slots));
+}
+
+function recalcScores(level: Level) {
+  level.user_slots.forEach(slot => {
+    let valid_solution = true;
+    let total_steps = 0;
+    const N_TESTS = 20;
+    for (let test_n = 0; test_n < N_TESTS; test_n++) {
+      let [molecule, target] = level.get_test(test_n);
+      let any_changes = true;
+      let n_steps = 0;
+      const MAX_STEPS = 1000;
+      while (n_steps < MAX_STEPS && any_changes) {
+        any_changes = false;
+        // try all vaus
+        for (let k = 0; k < slot.vaus.length; k++) {
+          const bind_result = afterRecursiveVau(molecule, slot.vaus[k]);
+          if (bind_result !== null) {
+            cur_base_molecule = bind_result.new_molecule;
+            any_changes = true;
+            n_steps+=1;
+            break;
+          }
+        }
+      }
+      if (n_steps === MAX_STEPS || !eqSexprs(target, molecule)) {
+        valid_solution = false;
+      }
+      total_steps += n_steps;
+    }
+    if (valid_solution) {
+      slot.stats = {
+        n_vaus: slot.vaus.length,
+        n_steps: total_steps / N_TESTS,
+        n_colors: new Set(slot.vaus.flatMap(allAtoms)).size,
+      }
+    } else {
+      slot.stats = null;
+    }
+  });
+
+  function allAtoms(vau: Sexpr): string[] {
+    if (vau.type === "atom") {
+      return [vau.value];
+    } else {
+      return [...allAtoms(vau.left), ...allAtoms(vau.right)];
+    }
+  }
 }
 
 function makePeanoSexpr(n: number): Sexpr {
@@ -1354,7 +1409,7 @@ function menu_frame(delta_time: number) {
 
     {
       if (button("New solution", new Rectangle(new Vec2(canvas_size.x * .75, level.user_slots.length * 75), new Vec2(canvas_size.x * .25, 50)))) {
-        level.user_slots.push({ name: `Solution ${level.user_slots.length}`, vaus: [] });
+        level.user_slots.push({ name: `Solution ${level.user_slots.length}`, vaus: [], stats: null });
       }
     }
   }
@@ -1634,6 +1689,7 @@ function game_frame(delta_time: number) {
     // menu button
     if (button("Menu", Rectangle.fromParams({ topRight: canvas_size.mulXY(1, 0), size: new Vec2(150, 50) }))) {
       save_cur_level();
+      // recalcScores(cur_level);
       STATE = "menu"
       return;
     }
