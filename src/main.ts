@@ -46,12 +46,13 @@ const canvas_size = new Vec2(canvas.width, canvas.height);
 const gfx = new NaiveSpriteGraphics(gl);
 // const gfx2 = new ShakuStyleGraphics(gl);
 
-const DEBUG = false;
+const DEBUG = true;
 
 // The variables we might want to tune while playing
 const CONFIG = {
   tmp01: .5,
   tmp1: 1.0,
+  tmp10: 10,
   tmp50: 50,
   tmp250: 250,
   tmp500: 500,
@@ -62,6 +63,7 @@ if (DEBUG) {
   const gui = new GUI();
   gui.add(CONFIG, "tmp01", 0, 1);
   gui.add(CONFIG, "tmp-1", -1, 1);
+  gui.add(CONFIG, "tmp10", 0, 20);
   gui.add(CONFIG, "tmp50", 0, 100);
   gui.add(CONFIG, "tmp250", 0, 500);
   gui.add(CONFIG, "tmp500", 0, 1000);
@@ -72,8 +74,28 @@ if (DEBUG) {
 }
 
 function myFillText(ctx: CanvasRenderingContext2D, text: string, pos: Vec2) {
-  text.split('\n').forEach((line, k) => {
-    ctx.fillText(line, pos.x, pos.y + k * 30);
+  // let to_draw: {view: MoleculeView, data: Sexpr}[] = [];
+  let to_draw: {data: Sexpr, line: number, col: number}[] = [];
+  let lines = text.split('\n');
+  lines.forEach((line, k) => {
+    while (line.includes('&')) {
+      let n = line.indexOf('&');
+      let n2 = line.indexOf('&', n + 1);
+      let sexpr_text = line.slice(n+1, n2);
+      try {
+        to_draw.push({data: parseSexpr(sexpr_text), line: k, col: n});
+      } catch {
+        console.log("invalid sexpr: ", sexpr_text);
+      }
+      line = line.slice(0, n) + "    " + line.slice(n2 + 1);
+      lines[k] = line;
+    }
+    ctx.fillText(line, pos.x, pos.y + k * 40);
+  });
+  to_draw.forEach(thing => {
+    let left = pos.x - ctx.measureText(lines[thing.line]).width / 2;
+    // drawMolecule(thing.data, {halfside: 20, pos: new Vec2(left + CONFIG.tmp50 + thing.col * CONFIG.tmp10, pos.y + thing.line * 40)});
+    drawMolecule(thing.data, {halfside: 20, pos: new Vec2(left + 20 + thing.col * 13.7, pos.y + thing.line * 40)});
   })
 }
 
@@ -908,7 +930,7 @@ let cur_level: Level;
 let levels: Level[] = [
   new Level(
     "anyred",
-    "Spike Detector:\nSome of our neutral samples have been\ncontaminated with spiky proteins,\nmake a detector for any spiky bits.",
+    "Spike Detector:\nSome of our pure &true& samples have\nbeen contaminated with &false&,\nmake a detector that outputs &false&\nfor contaminated samples\nand &true& otherwise",
     (rand) => {
       let final_has_red = rand.next() > .3;
       function helper(has_red: boolean, depth: number): Sexpr {
@@ -942,7 +964,7 @@ let levels: Level[] = [
   ),
   new Level(
     "switch",
-    "Switcheroo",
+    "Switcheroo:\nGiven &(input . (0 . 1))&, return &(output . (1 . 0))&.",
     (rand) => {
       let v1 = makeRandomSexpr(rand, 4, misc_atoms);
       let v2 = makeRandomSexpr(rand, 4, misc_atoms);
@@ -1415,7 +1437,7 @@ function menu_frame(delta_time: number) {
   }
 }
 
-ctx.font = `26px Arial`;
+ctx.font = `26px monospace`;
 ctx.textBaseline = "middle";
 ctx.textAlign = "center";
 
