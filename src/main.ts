@@ -136,9 +136,9 @@ function offsetVauView(view: VauView, vertical_offset: number): VauView {
 }
 
 const default_vau: Pair = parseSexpr(`(
-  (1 . @2)
+  (nil . @2)
   .
-  (@2 . 1)
+  (@2 . nil)
 )`) as Pair;
 
 let cur_vaus: Pair[] = [
@@ -312,6 +312,17 @@ const colorFromAtom: (atom: string) => Color = (() => {
   generated.set("v1", new Color(.9, .9, .3));
   generated.set("v2", new Color(.3, .9, .9));
   generated.set("v3", new Color(.9, .3, .9));
+  generated.set("f1", Color.fromInt(0x9E008B));
+  `#ff0000
+  #ffff00
+  #c71585
+  #00fa9a
+  #0000ff
+  #1e90ff
+  #ffdab9`.trim().split('\n').forEach((s, k) => {
+    generated.set(k.toString(), Color.fromHex(s));
+  });
+
   return (atom: string) => {
     let color = generated.get(atom)
     if (color !== undefined) {
@@ -908,6 +919,19 @@ let levels: Level[] = [
     },
   ),
   new Level(
+    "bubbleUp",
+    "...",
+    (rand) => {
+      const vanilla_list = fromCount(randomInt(rand, 0, 6), k => randomChoice(rand, misc_atoms));
+      const inserted_list = vanilla_list.slice(0)
+      inserted_list.splice(randomInt(rand, 0, vanilla_list.length + 1), 0, doAtom("f1"));
+      return [
+        doList(inserted_list),
+        doList([doAtom("f1"), ...vanilla_list]),
+      ];
+    },
+  ),
+  new Level(
     "add",
     "Peano Addition:\nWe can represent any natural number as\na list of ones! Make a vau to add them.",
     (rand) => {
@@ -1084,7 +1108,7 @@ let levels: Level[] = [
 ];
 
 function isValidVau(vau: Pair): boolean {
-  function getAllTemplateNames(v: Sexpr) : string[] {
+  function getAllTemplateNames(v: Sexpr): string[] {
     if (v.type === "atom") {
       if (v.value[0] === "@") {
         return [v.value];
@@ -1838,14 +1862,34 @@ const atom_shapes = new DefaultMap<string, AtomProfile>((_) => [], new Map(Objec
   }),
   "false": [new Vec2(1 / 6, .2), new Vec2(.5, -.2), new Vec2(5 / 6, .2)],
   "v1": [new Vec2(.2, .2), new Vec2(.4, -.2), new Vec2(.7, .2)],
-  "v2": [new Vec2(.5, .25)],
+  // "v2": [new Vec2(.1, 0), new Vec2(.3, -.2), new Vec2(.5, 0), new Vec2(.8, .2), new Vec2(.95, 0)],
+  // "v2": [new Vec2(.2, 0), new Vec2(.5, .2), new Vec2(.8, 0)],
+  // "v2": fromCount(3, k => {
+  //   let x2 = (k+1)/3;
+  //   let x1 = x2 - .05;
+  //   if (k === 2) {
+  //     return [new Vec2(x1, .2 - x1 * .1)];
+  //   } else {
+  //     return [new Vec2(x1, .2 - x1 * .1), new Vec2(x2, - x2 * .1)];
+  //   }
+  // }).flat(1),
+  "v2": fromCount(3, k => {
+    let d = .05;
+    let raw = [new Vec2(k/3, 0), new Vec2((k+1)/3-d, .2), new Vec2((k+1)/3-d/2, .1)];
+
+    let transform = Vec2.findTransformationWithFixedOrigin({source: new Vec2(1-d/2, .1), target: new Vec2(1,0)});
+    return raw.map(transform);
+  }).flat(1),
+  // "v2": [new Vec2(.25, .2), new Vec2(.3, 0), new Vec2(.55, .2), new Vec2(.6, 0), new Vec2(.85, .2), new Vec2(.9, 0)],
   "v3": fromCount(2, k => {
     let c = (2 * k + 1) / 4;
     let s = .6 / 4;
     return [new Vec2(c - s, 0), new Vec2(c, -.25), new Vec2(c + s, 0)];
   }).flat(1),
-  // '5': [new Vec2(.2, 0), new Vec2(.5, .2), new Vec2(.8, 0)],
-  // '5': 
+  // "f1": [new Vec2(.3, -.2), new Vec2(.5, 0), new Vec2(.8, .2)],
+  "f1": [new Vec2(.3, -.2), new Vec2(.4, -.07), new Vec2(.5, .03), new Vec2(.6, .1), new Vec2(.7, .17), new Vec2(.8, .2), new Vec2(.85, .2)],
+  // "f1": [new Vec2(.3, -.2), new Vec2(.4, -.05), new Vec2(.5, .05), new Vec2(.6, .15), new Vec2(.8, .2)],
+  // "f1": [new Vec2(.5, .25)],
 })));
 
 function animate(

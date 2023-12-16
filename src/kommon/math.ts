@@ -242,6 +242,27 @@ export class Vec2 {
     magSq(): number {
         return this.x * this.x + this.y * this.y;
     }
+    
+    mag(): number {
+        return Math.sqrt(this.magSq());
+    }
+
+    radians(): number {
+        return Vec2.radians(this);
+    }
+
+    rotate(radians: number) : Vec2 {
+        return new Vec2(
+            Math.cos(radians) * this.x - Math.sin(radians) * this.y,    
+            Math.sin(radians) * this.x + Math.cos(radians) * this.y,    
+        )
+    }
+
+    static findTransformationWithFixedOrigin({source, target}: {source: Vec2, target: Vec2}): (v: Vec2) => Vec2 {
+        let scaling_factor = target.mag() / source.mag();
+        let delta_radians = target.radians() - source.radians();
+        return (v: Vec2) => v.rotate(delta_radians).scale(scaling_factor);
+    }
 
     static inBounds(point: Vec2, bounds: Vec2): boolean {
         return inRange(point.x, 0, bounds.x) && inRange(point.y, 0, bounds.y);
