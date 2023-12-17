@@ -1721,6 +1721,13 @@ function game_frame(delta_time: number) {
   if (vau_index_visual_offset === 0) {
     let base_rect = vauToolbarRect(cur_vau_index);
     let asdf = Rectangle.fromParams({ bottomLeft: base_rect.topLeft, size: base_rect.size.scale(1 / 3) });
+    asdf.topLeft = asdf.topLeft.subX(asdf.size.x);
+    if (button("+", asdf)) {
+      cur_vaus.splice(cur_vau_index, 0, cloneSexpr(cur_vau) as Pair);
+      cur_vau_index += 1;
+      save_cur_level();
+    }
+    asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
     if (cur_vau_index > 0 && button("<", asdf)) {
       let temp = cur_vaus[cur_vau_index];
       cur_vaus[cur_vau_index] = cur_vaus[cur_vau_index - 1];
@@ -1742,6 +1749,11 @@ function game_frame(delta_time: number) {
       cur_vaus[cur_vau_index] = cur_vaus[cur_vau_index + 1];
       cur_vaus[cur_vau_index + 1] = temp;
       cur_vau_index += 1;
+      save_cur_level();
+    }
+    asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
+    if (button("+", asdf)) {
+      cur_vaus.splice(cur_vau_index+1, 0, cloneSexpr(cur_vau) as Pair);
       save_cur_level();
     }
   }
