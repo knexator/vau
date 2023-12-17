@@ -242,7 +242,7 @@ export class Vec2 {
     magSq(): number {
         return this.x * this.x + this.y * this.y;
     }
-    
+
     mag(): number {
         return Math.sqrt(this.magSq());
     }
@@ -251,14 +251,14 @@ export class Vec2 {
         return Vec2.radians(this);
     }
 
-    rotate(radians: number) : Vec2 {
+    rotate(radians: number): Vec2 {
         return new Vec2(
-            Math.cos(radians) * this.x - Math.sin(radians) * this.y,    
-            Math.sin(radians) * this.x + Math.cos(radians) * this.y,    
+            Math.cos(radians) * this.x - Math.sin(radians) * this.y,
+            Math.sin(radians) * this.x + Math.cos(radians) * this.y,
         )
     }
 
-    static findTransformationWithFixedOrigin({source, target}: {source: Vec2, target: Vec2}): (v: Vec2) => Vec2 {
+    static findTransformationWithFixedOrigin({ source, target }: { source: Vec2, target: Vec2 }): (v: Vec2) => Vec2 {
         let scaling_factor = target.mag() / source.mag();
         let delta_radians = target.radians() - source.radians();
         return (v: Vec2) => v.rotate(delta_radians).scale(scaling_factor);
@@ -309,6 +309,16 @@ export class Rectangle {
     getCenter(): Vec2 {
         return this.topLeft.add(this.size.scale(.5));
     }
+
+
+    public get left(): number {
+        return this.topLeft.x;
+    }
+
+    public get right(): number {
+        return this.topLeft.x + this.size.x;
+    }
+
 
     resized(new_size: Vec2, fixed: "center"): Rectangle {
         return Rectangle.fromParams({ center: this.getCenter(), size: new_size });
