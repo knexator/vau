@@ -2,7 +2,7 @@ import GUI from "lil-gui";
 import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
 import { DefaultMap, commonPrefixLen, eqArrays, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
-import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap, clamp, towards } from "./kommon/math";
+import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap, clamp, towards, argmax } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
 
@@ -46,7 +46,7 @@ const canvas_size = new Vec2(canvas.width, canvas.height);
 const gfx = new NaiveSpriteGraphics(gl);
 // const gfx2 = new ShakuStyleGraphics(gl);
 
-const DEBUG = true;
+const DEBUG = false;
 
 // The variables we might want to tune while playing
 const CONFIG = {
@@ -75,15 +75,15 @@ if (DEBUG) {
 
 function myFillText(ctx: CanvasRenderingContext2D, text: string, pos: Vec2) {
   // let to_draw: {view: MoleculeView, data: Sexpr}[] = [];
-  let to_draw: {data: Sexpr, line: number, col: number}[] = [];
+  let to_draw: { data: Sexpr, line: number, col: number }[] = [];
   let lines = text.split('\n');
   lines.forEach((line, k) => {
     while (line.includes('&')) {
       let n = line.indexOf('&');
       let n2 = line.indexOf('&', n + 1);
-      let sexpr_text = line.slice(n+1, n2);
+      let sexpr_text = line.slice(n + 1, n2);
       try {
-        to_draw.push({data: parseSexpr(sexpr_text), line: k, col: n});
+        to_draw.push({ data: parseSexpr(sexpr_text), line: k, col: n });
       } catch {
         console.log("invalid sexpr: ", sexpr_text);
       }
@@ -95,7 +95,7 @@ function myFillText(ctx: CanvasRenderingContext2D, text: string, pos: Vec2) {
   to_draw.forEach(thing => {
     let left = pos.x - ctx.measureText(lines[thing.line]).width / 2;
     // drawMolecule(thing.data, {halfside: 20, pos: new Vec2(left + CONFIG.tmp50 + thing.col * CONFIG.tmp10, pos.y + thing.line * 40)});
-    drawMolecule(thing.data, {halfside: 20, pos: new Vec2(left + 20 + thing.col * 13.7, pos.y + thing.line * 40)});
+    drawMolecule(thing.data, { halfside: 20, pos: new Vec2(left + 20 + thing.col * 13.7, pos.y + thing.line * 40) });
   })
 }
 
@@ -477,7 +477,7 @@ function drawMoleculeHighlight(data: Sexpr, view: MoleculeView, color: string) {
   lineTo(ctx, view.pos.addY(-view.halfside));
   if (data.type === "atom" && data.value[0] === "@") {
     lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, -view.halfside)));
-    lineTo(ctx, view.pos.addX(view.halfside * (3 +spike_perc)));
+    lineTo(ctx, view.pos.addX(view.halfside * (3 + spike_perc)));
     lineTo(ctx, view.pos.add(new Vec2(view.halfside * 3, view.halfside)));
   } else {
     lineTo(ctx, view.pos.add(new Vec2(view.halfside * 2, -view.halfside)));
@@ -533,7 +533,7 @@ function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: M
   const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
   if (!inRange(delta_pos.y, -1, 1)) return null;
   if (data.type === "atom") {
-    let max_x = (data.value[0] === "@") ? (3 + (1-Math.abs(delta_pos.y)) * spike_perc) : 2
+    let max_x = (data.value[0] === "@") ? (3 + (1 - Math.abs(delta_pos.y)) * spike_perc) : 2
     if (inRange(delta_pos.x, (Math.abs(delta_pos.y) - 1) * spike_perc, max_x)) {
       return []
     } else {
@@ -560,7 +560,7 @@ function moleculeAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: M
 
 function matcherAdressFromScreenPosition(screen_pos: Vec2, data: Sexpr, view: VauView): Address | null {
   const delta_pos = screen_pos.sub(view.pos).scale(1 / view.halfside);
-  if (!inRange(delta_pos.y, -1,1)) return null;
+  if (!inRange(delta_pos.y, -1, 1)) return null;
   if (data.type === "atom") {
     if (data.value[0] === "@") {
       return inRange(delta_pos.x, -3 + (Math.abs(delta_pos.y) - 1) * spike_perc, -(Math.abs(delta_pos.y) - 1) * spike_perc) ? [] : null;
@@ -1140,6 +1140,19 @@ let levels: Level[] = [
     },
   ),
   new Level(
+    "majority",
+    "Majority Sample:\nGiven a list of &v1&, &v2&, and &v3&,\nreturn the most common one.",
+    (rand) => {
+      let counts = randomChoiceWithoutRepeat(rand, fromCount(7, k => k), misc_atoms.length);
+      let list = shuffle(rand, Array(...zip2(counts, misc_atoms)).flatMap(([count, atom]) => fromCount(count, _ => atom)));
+      let majority_atom = misc_atoms[argmax(counts)!];
+      return [
+        doPair(doAtom("input"), doList(list)),
+        majority_atom
+      ];
+    },
+  ),
+  new Level(
     "cadadar_hard",
     "Address Lookup 2:\nAs in Address Lookup, &true& means top\nhalf and &false& means bottom half.\nHowever, now they are applied from\nsmaller to bigger; given a list\nof &true& and &false& ending in a sample,\naddress that sample.\n(this one is hard to explain)",
     (rand) => {
@@ -1212,6 +1225,22 @@ function randomInt(rand: Rand, low_inclusive: number, high_exclusive: number): n
   return low_inclusive + Math.floor(rand.next() * (high_exclusive - low_inclusive));
 }
 
+// from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+function shuffle<T>(rand: Rand, array: T[]): T[] {
+    let currentIndex = array.length, randomIndex;
+    // While there remain elements to shuffle.
+    while (currentIndex != 0) {
+        // Pick a remaining element.
+        randomIndex = Math.floor(rand.next() * currentIndex);
+        currentIndex--;
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [
+            array[randomIndex], array[currentIndex]];
+    }
+    return array;
+}
+
+
 function randomChoiceWithoutRepeat<T>(rand: Rand, arr: T[], count: number) {
   if (count > arr.length) {
     throw new Error("array too small or count too big");
@@ -1266,7 +1295,7 @@ function recalcScores(level: Level) {
           if (bind_result !== null) {
             cur_base_molecule = bind_result.new_molecule;
             any_changes = true;
-            n_steps+=1;
+            n_steps += 1;
             break;
           }
         }
