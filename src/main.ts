@@ -964,7 +964,7 @@ let levels: Level[] = [
   ),
   new Level(
     "switch",
-    "Switcheroo:\nSeems like we assembled\nsome molecules the wrong way around,\n&(v1 . v2)& instead of &(v2 . v1)&. They are\nmarked with &input&; once corrected,\nmark them with &output&. In other words,\ngiven &(input . (v1 . v2))&, return &(output . (v2 . v1))&.",
+    "Switcheroo:\nSeems like we assembled\nsome samples the wrong way around,\n&(v1 . v2)& instead of &(v2 . v1)&. They are\nmarked with &input&; once corrected,\nmark them with &output&. In other words,\ngiven &(input . (v1 . v2))&, return &(output . (v2 . v1))&.",
     (rand) => {
       let v1 = makeRandomSexpr(rand, 4, misc_atoms);
       let v2 = makeRandomSexpr(rand, 4, misc_atoms);
@@ -982,7 +982,7 @@ let levels: Level[] = [
   ),
   new Level(
     "bubbleUp",
-    "Bubble Up:\nOur vaus are limited to\nworking on a single molecule\nat a time. Luckily, there is\na trick for expressing a list\nof molecules in a single molecule:\nnest them, ending in &nil&, which\nis also the empty list. For example,\nthe list (&v1&, &v2&) would be &(v1 v2)&\nFor this level, move the &f1&\nto the start of the given list.",
+    "Bubble Up:\nOur vaus are limited to\nworking on a single sample\nat a time. Luckily, there is\na trick for expressing a list\nof samples in a single sample:\nnest them, ending in &nil&, which\nis also the empty list. For example,\nthe list (&v1&, &v2&) would be &(v1 v2)&\nFor this level, move the &f1&\nto the start of the given list.",
     (rand) => {
       rand.next();
       rand.next();
@@ -1033,7 +1033,7 @@ let levels: Level[] = [
   ),
   new Level(
     "equal",
-    "Equality Check:\nGiven a pair of molecules\n(marked by &input&),\nreturn &true& if they are equal\nand &false& otherwise.",
+    "Equality Check:\nGiven a pair of samples\n(marked by &input&),\nreturn &true& if they are equal\nand &false& otherwise.",
     (rand) => {
       let generate_equal = rand.next() > .5;
       function helper(equal: boolean, max_depth: number): [Sexpr, Sexpr] {
@@ -1064,7 +1064,7 @@ let levels: Level[] = [
   ),
   new Level(
     "cadadar_easy",
-    "Address Lookup:\nWe have &(input . (f1 . v1))&, where &v1& is a molecule\nand &f1& is an address in that molecule.\nThe address is a list of &true& and &false&,\nwhere &true& means the top submolecule\nand &false& the bottom one. For example,\n&(true true)& would mean 'the top half of the\ntop half of the molecule'; for\n&((v1 . v2) . v3)&, it would be &v1&.",
+    "Address Lookup:\nWe have &(input . (f1 . v1))&, where &v1& is a sample\nand &f1& is an address in that sample.\nThe address is a list of &true& and &false&,\nwhere &true& means the top subsample\nand &false& the bottom one. For example,\n&(true true)& would mean 'the top half of the\ntop half of the sample'; for\n&((v1 . v2) . v3)&, it would be &v1&.",
     (rand) => {
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
@@ -1129,7 +1129,7 @@ let levels: Level[] = [
   ),
   new Level(
     "cadadar_hard",
-    "Address Lookup 2:\nAs in Address Lookup, &true& means top\nhalf and &false& means bottom half.\nHowever, now they are applied from\nsmaller to bigger; given a list\nof &true& and &false& ending in a molecule,\naddress that molecule.\n(this one is hard to explain)",
+    "Address Lookup 2:\nAs in Address Lookup, &true& means top\nhalf and &false& means bottom half.\nHowever, now they are applied from\nsmaller to bigger; given a list\nof &true& and &false& ending in a sample,\naddress that sample.\n(this one is hard to explain)",
     (rand) => {
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
