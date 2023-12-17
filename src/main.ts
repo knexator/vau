@@ -964,7 +964,7 @@ let levels: Level[] = [
   ),
   new Level(
     "switch",
-    "Switcheroo:\nGiven &(input . (0 . 1))&, return &(output . (1 . 0))&.",
+    "Switcheroo:\nSeems like we assembled\nsome molecules the wrong way around,\n&(v1 . v2)& instead of &(v2 . v1)&. They are\nmarked with &input&; once corrected,\nmark them with &output&. In other words,\ngiven &(input . (v1 . v2))&, return &(output . (v2 . v1))&.",
     (rand) => {
       let v1 = makeRandomSexpr(rand, 4, misc_atoms);
       let v2 = makeRandomSexpr(rand, 4, misc_atoms);
@@ -982,8 +982,10 @@ let levels: Level[] = [
   ),
   new Level(
     "bubbleUp",
-    "...",
+    "Bubble Up:\nOur vaus are limited to\nworking on a single molecule\nat a time. Luckily, there is\na trick for expressing a list\nof molecules in a single molecule:\nnest them, ending in &nil&, which\nis also the empty list. For example,\nthe list (&v1&, &v2&) would be &(v1 v2)&\nFor this level, move the &f1&\nto the start of the given list.",
     (rand) => {
+      rand.next();
+      rand.next();
       rand.next();
       const vanilla_list = fromCount(randomInt(rand, 0, 6), k => randomChoice(rand, misc_atoms));
       const inserted_list = vanilla_list.slice(0)
@@ -996,7 +998,7 @@ let levels: Level[] = [
   ),
   new Level(
     "add",
-    "Peano Addition:\nWe can represent any natural number as\na list of ones! Make a vau to add them.",
+    "Peano Addition:\nAnother fancy trick: to represent\nnumbers, we use a list of &true&.\nFor example, number 3 would be &(true true true)&,\nand 0 would be &()&. For this level,\nadd the 2 given numbers.",
     (rand) => {
       let n1 = Math.floor(rand.next() * 6);
       let n2 = Math.floor(rand.next() * 6);
@@ -1008,7 +1010,7 @@ let levels: Level[] = [
   ),
   new Level(
     "reverse",
-    "List Reverse:\nReverse the given nil-terminated list.",
+    "List Reverse:\nGiven a list of &v1&, &v2&, &v3&,\nmarked with &input& at the start,\nreverse it.",
     (rand) => {
       rand.next();
       function randomSexpr(max_depth: number): Sexpr {
@@ -1031,7 +1033,7 @@ let levels: Level[] = [
   ),
   new Level(
     "equal",
-    "Equality Check:\nReturn spiky when both molecules are different.",
+    "Equality Check:\nGiven a pair of molecules\n(marked by &input&),\nreturn &true& if they are equal\nand &false& otherwise.",
     (rand) => {
       let generate_equal = rand.next() > .5;
       function helper(equal: boolean, max_depth: number): [Sexpr, Sexpr] {
@@ -1061,31 +1063,8 @@ let levels: Level[] = [
     }
   ),
   new Level(
-    "lookup",
-    "Lookup Table:\nGiven a list of (key, value) pairs and a key,\nreturn the value associated with it.",
-    (rand) => {
-      function randomSexpr(max_depth: number): Sexpr {
-        if (max_depth === 0) return randomChoice(rand, misc_atoms);
-        return doPair(
-          randomSexpr(Math.floor(rand.next() * max_depth)),
-          randomSexpr(Math.floor(rand.next() * max_depth)),
-        );
-      }
-      let keys = randomChoiceWithoutRepeat(rand, misc_atoms, randomInt(rand, 1, misc_atoms.length));
-      let dict_values = keys.map(v => doPair(v, randomSexpr(4)));
-      let selected = randomChoice(rand, dict_values);
-      return [doPair(
-        doAtom("input"),
-        doPair(
-          doList(dict_values),
-          selected.left
-        )
-      ), selected.right]
-    }
-  ),
-  new Level(
     "cadadar_easy",
-    "CADADADAR easy",
+    "Address Lookup:\nWe have &(input . (f1 . v1))&, where &v1& is a molecule\nand &f1& is an address in that molecule.\nThe address is a list of &true& and &false&,\nwhere &true& means the top submolecule\nand &false& the bottom one. For example,\n&(true true)& would mean 'the top half of the\ntop half of the molecule'; for\n&((v1 . v2) . v3)&, it would be &v1&.",
     (rand) => {
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
@@ -1126,8 +1105,31 @@ let levels: Level[] = [
     }
   ),
   new Level(
+    "lookup",
+    "Lookup Table:\nWe have &(input . (f1 . v1))&, where &v1& is a key\nand &f1& is a list of (key,value)\npairs (for example, &(v1 . f2)& would be\nkey &v1& and value &f2&).\nReturn the value for the given key.",
+    (rand) => {
+      function randomSexpr(max_depth: number): Sexpr {
+        if (max_depth === 0) return randomChoice(rand, misc_atoms);
+        return doPair(
+          randomSexpr(Math.floor(rand.next() * max_depth)),
+          randomSexpr(Math.floor(rand.next() * max_depth)),
+        );
+      }
+      let keys = randomChoiceWithoutRepeat(rand, misc_atoms, randomInt(rand, 1, misc_atoms.length));
+      let dict_values = keys.map(v => doPair(v, randomSexpr(4)));
+      let selected = randomChoice(rand, dict_values);
+      return [doPair(
+        doAtom("input"),
+        doPair(
+          doList(dict_values),
+          selected.left
+        )
+      ), selected.right]
+    }
+  ),
+  new Level(
     "cadadar_hard",
-    "CADADADAR hard",
+    "Address Lookup 2:\nAs in Address Lookup, &true& means top\nhalf and &false& means bottom half.\nHowever, now they are applied from\nsmaller to bigger; given a list\nof &true& and &false& ending in a molecule,\naddress that molecule.\n(this one is hard to explain)",
     (rand) => {
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
@@ -1397,7 +1399,7 @@ function menu_frame(delta_time: number) {
   if (selected_level_index !== null) {
     let level = levels[selected_level_index]
 
-    myFillText(ctx, level.description, canvas_size.mul(new Vec2(lerp(1 / 3, 3 / 4, .5), .5)));
+    myFillText(ctx, level.description, canvas_size.mul(new Vec2(lerp(1 / 3, 3 / 4, .5), .4)));
 
     // menu sample select
     if (button('<', new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25)))) {
