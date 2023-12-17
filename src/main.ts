@@ -1469,6 +1469,8 @@ function menu_frame(delta_time: number) {
         STATE = "game";
         cur_level = level;
         cur_vaus = slot.vaus;
+        vau_index_visual_offset = 0;
+        vau_toolbar_offset = 0;
         cur_vau_index = 0;
         cur_test_case = 0;
         cur_molecule_address = [];
