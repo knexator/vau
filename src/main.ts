@@ -1128,6 +1128,18 @@ let levels: Level[] = [
     }
   ),
   new Level(
+    "multiply",
+    "Peano Multiplication:\nGiven a pair of numbers marked\nwith &input&, multiply them.",
+    (rand) => {
+      let n1 = Math.floor(rand.next() * 6);
+      let n2 = Math.floor(rand.next() * 6);
+      return [
+        doPair(doAtom("input"), doPair(makePeanoSexpr(n1), makePeanoSexpr(n2))),
+        makePeanoSexpr(n1 * n2),
+      ];
+    },
+  ),
+  new Level(
     "cadadar_hard",
     "Address Lookup 2:\nAs in Address Lookup, &true& means top\nhalf and &false& means bottom half.\nHowever, now they are applied from\nsmaller to bigger; given a list\nof &true& and &false& ending in a sample,\naddress that sample.\n(this one is hard to explain)",
     (rand) => {
