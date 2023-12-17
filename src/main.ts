@@ -1702,6 +1702,7 @@ function game_frame(delta_time: number) {
   // vau toolbar
   if (.15 > (vauToolbarRect(cur_vau_index - vau_index_visual_offset).left / canvas_size.x)) vau_toolbar_offset += 1 * delta_time;
   if (.85 < (vauToolbarRect(cur_vau_index - vau_index_visual_offset).right / canvas_size.x)) vau_toolbar_offset -= 1 * delta_time;
+  // vau_toolbar_offset = 0;
   cur_vaus.forEach((vau, k) => {
     drawVau(vau, {
       pos: canvas_size.mulXY(.1 + k * .1 + vau_toolbar_offset, .95),
@@ -1760,12 +1761,12 @@ function game_frame(delta_time: number) {
       save_cur_level();
     }
   }
-  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(0, 1).addX(vau_toolbar_offset), size: new Vec2(50, 50) }))) {
+  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(vau_toolbar_offset, 1), size: new Vec2(50, 50) }))) {
     cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
     cur_vau_index += 1;
     save_cur_level();
   }
-  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length, 1).addX(vau_toolbar_offset), size: new Vec2(50, 50) }))) {
+  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length + vau_toolbar_offset, 1), size: new Vec2(50, 50) }))) {
     cur_vaus.push(cloneSexpr(default_vau) as Pair);
     save_cur_level();
   }
