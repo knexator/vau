@@ -886,6 +886,11 @@ function doAtom(value: string): Atom {
   return { type: "atom", value };
 }
 
+function containsTemplate(v: Sexpr): boolean {
+  if (v.type === "atom") return v.value[0] === "@";
+  return containsTemplate(v.left) || containsTemplate(v.right);
+}
+
 function eqSexprs(a: Sexpr, b: Sexpr): boolean {
   if (a.type === "atom" && b.type === "atom") return a.value === b.value
   if (a.type === "pair" && b.type === "pair") {
@@ -1959,11 +1964,11 @@ function game_frame(delta_time: number) {
         case "none":
           break;
         case "molecule":
-          drawMoleculeHighlight(mouse_state.value, getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), "Chartreuse");
+          drawMoleculeHighlight(mouse_state.value, getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address), containsTemplate(mouse_state.value) ? "red" : "Chartreuse");
           ctx.globalAlpha = .5;
           drawMolecule(mouse_state.value, getGrandchildView(cur_molecule_view.cur, cur_mouse_place.molecule_address));
           ctx.globalAlpha = 1;
-          if (input.mouse.wasReleased(MouseButton.Left)) {
+          if (input.mouse.wasReleased(MouseButton.Left) && !containsTemplate(mouse_state.value)) {
             cur_base_molecule = setAtAddress(cur_base_molecule, cur_mouse_place.molecule_address, mouse_state.value);
           }
           break;
