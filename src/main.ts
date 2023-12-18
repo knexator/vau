@@ -129,16 +129,16 @@ let spike_perc = 1 / 2;
 let cur_base_molecule = parseSexpr("(+  (1 1 1) . (+ (1 1) . (1)))");
 let cur_target = parseSexpr("(1 1 1 1 1 1)");
 let cur_molecule_address = [] as Address;
-const base_molecule_view: MoleculeView = {
+let base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
   halfside: Math.floor(canvas_size.y * .2),
 };
-const target_view: MoleculeView = {
+let target_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.05, .1)),
   halfside: 35 * _1,
 };
 
-const base_vau_view: VauView = {
+let base_vau_view: VauView = {
   pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 5),
   halfside: base_molecule_view.halfside,
 };
@@ -860,7 +860,7 @@ let mouse_state: {
 } = { type: "none" };
 
 const misc_atoms = "v1,v2,v3".split(",").map(doAtom);
-const toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = [doPair(doAtom("nil"), doAtom("nil")), ...(
+let toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = [doPair(doAtom("nil"), doAtom("nil")), ...(
   ["nil", "true", "false", "input", "output", "v1", "v2", "v3", "f1", "f2"].map(doAtom))].map((value, k) => {
     return { value, view: { pos: new Vec2((340 + 60 * k) * _1, 40 * _1), halfside: 20 * _1 } };
   });
@@ -869,7 +869,7 @@ fromCount(11, k => {
   return { view: { pos: new Vec2(340 + 60 * k, 40).scale(_1), halfside: 20 * _1 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
 });
 
-const toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = fromCount(7, k => {
+let toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = fromCount(7, k => {
   return { view: { pos: new Vec2(400 + 95 * k, 100).scale(_1), halfside: 20 * _1 }, value: doAtom(`@${k}`), used: false };
 });
 
@@ -1402,6 +1402,25 @@ function every_frame(cur_timestamp: number) {
     ctx.font = `${Math.round(_1 * 26)}px monospace`;
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
+    base_molecule_view = {
+      pos: canvas_size.mul(new Vec2(.1, .5)),
+      halfside: Math.floor(canvas_size.y * .2),
+    };
+    target_view = {
+      pos: canvas_size.mul(new Vec2(.05, .1)),
+      halfside: 35 * _1,
+    };
+    base_vau_view = {
+      pos: base_molecule_view.pos.addX(base_molecule_view.halfside * 5),
+      halfside: base_molecule_view.halfside,
+    };
+    toolbar_atoms = [doPair(doAtom("nil"), doAtom("nil")), ...(
+      ["nil", "true", "false", "input", "output", "v1", "v2", "v3", "f1", "f2"].map(doAtom))].map((value, k) => {
+        return { value, view: { pos: new Vec2((340 + 60 * k) * _1, 40 * _1), halfside: 20 * _1 } };
+      });
+    toolbar_templates = fromCount(7, k => {
+      return { view: { pos: new Vec2(400 + 95 * k, 100).scale(_1), halfside: 20 * _1 }, value: doAtom(`@${k}`), used: false };
+    });
   }
 
   // gl.clear(gl.COLOR_BUFFER_BIT);
