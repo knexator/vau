@@ -1810,7 +1810,7 @@ function game_frame(delta_time: number) {
     if (animation_state !== null && animation_state.speed === 0) {
       strokeRect(ctx, Rectangle
         .fromParams({ topRight: new Vec2(canvas_size.x - 175 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) })
-        .resized(new Vec2(75, 75), "center"));
+        .resized(new Vec2(75, 75).scale(_1), "center"));
     }
     if (alwaysInteractableButton(">|", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 175 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) }))
       && vau_index_visual_offset === 0) {
