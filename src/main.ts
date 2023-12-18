@@ -935,6 +935,29 @@ let cur_level: Level;
 
 let levels: Level[] = [
   new Level(
+    "simplest",
+    "Substitution:\nWe have too many &v1&, &v2&,\nand &v3& samples. Vau all of\nthem into &f1&.",
+    (rand) => {
+      return [
+        randomChoice(rand, misc_atoms),
+        doAtom("f1"),
+      ];
+      // let originals = misc_atoms;
+      // let targets = [...misc_atoms.slice(1), misc_atoms[0]];
+      // let k = randomInt(rand, 0, misc_atoms.length);
+      // return [
+      //   doPair(
+      //     doAtom("input"),
+      //     originals[k],
+      //   ),
+      //   doPair(
+      //     doAtom("output"),
+      //     targets[k],
+      //   ),
+      // ];
+    }
+  ),
+  new Level(
     "anyred",
     "Spike Detector:\nSome of our pure &true& samples have\nbeen contaminated with &false&,\nmake a detector that outputs &false&\nfor contaminated samples\nand &true& otherwise",
     (rand) => {
@@ -953,7 +976,7 @@ let levels: Level[] = [
             if (rand.next() < .5) {
               left_has_red = false;
             } else {
-              left_has_red = false;
+              right_has_red = false;
             }
           }
           return doPair(
