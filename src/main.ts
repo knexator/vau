@@ -1437,8 +1437,12 @@ function menu_frame(delta_time: number) {
   ctx.stroke();
 
   for (let k = 0; k < levels.length; k++) {
-    if (button(k.toString(), new Rectangle(new Vec2(50 + mod(k, 4) * 100, 50 + Math.floor(k / 4) * 100).scale(_1), Vec2.both(50 * _1)))) {
+    const rect = new Rectangle(new Vec2(50 + mod(k, 4) * 100, 50 + Math.floor(k / 4) * 100).scale(_1), Vec2.both(50 * _1));
+    if (button(k.toString(), rect)) {
       selected_level_index = k;
+    }
+    if (selected_level_index === k) {
+      strokeRect(ctx, rect);
     }
   }
 
