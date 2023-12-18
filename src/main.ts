@@ -143,6 +143,10 @@ let base_vau_view: VauView = {
   halfside: base_molecule_view.halfside,
 };
 
+const N_TESTS = 20;
+let failed_cur_test = false;
+
+let testing_animation_state: { test_case_n: number, cur_iters: number, total_iters: number } | null = null;
 let animation_state: {
   animating_vau_view: Anim<VauView>,
   transformed_base_molecule: Sexpr,
@@ -935,6 +939,7 @@ let STATE: "menu" | "game" = "menu";
 let selected_level_index: number | null = null;
 let selected_menu_test: number = 0
 
+let cur_solution_slot: number = 0;
 let cur_level: Level;
 
 let levels: Level[] = [
@@ -1251,7 +1256,7 @@ function isValidVau(vau: Pair): boolean {
 }
 
 function canInteract() {
-  return (vau_index_visual_offset === 0) && (animation_state === null);
+  return (testing_animation_state === null) && (vau_index_visual_offset === 0) && (animation_state === null);
 }
 
 {
@@ -1260,12 +1265,16 @@ function canInteract() {
     let stuff = window.localStorage.getItem(`knexator_vau_${level.id}`);
     if (stuff !== null) {
       level.user_slots = JSON.parse(stuff);
+      level.user_slots.forEach(x => {
+        if (x.stats === undefined) x.stats = null;
+      })
       // recalcScores(level);
     }
   });
 }
 
 function save_cur_level() {
+  failed_cur_test = false;
   window.localStorage.setItem(`knexator_vau_${cur_level.id}`, JSON.stringify(cur_level.user_slots));
 }
 
@@ -1273,7 +1282,7 @@ function recalcScores(level: Level) {
   level.user_slots.forEach(slot => {
     let valid_solution = true;
     let total_steps = 0;
-    const N_TESTS = 20;
+    // const N_TESTS = 20;
     for (let test_n = 0; test_n < N_TESTS; test_n++) {
       let [molecule, target] = level.get_test(test_n);
       let any_changes = true;
@@ -1307,13 +1316,13 @@ function recalcScores(level: Level) {
       slot.stats = null;
     }
   });
+}
 
-  function allAtoms(vau: Sexpr): string[] {
-    if (vau.type === "atom") {
-      return [vau.value];
-    } else {
-      return [...allAtoms(vau.left), ...allAtoms(vau.right)];
-    }
+function allAtoms(vau: Sexpr): string[] {
+  if (vau.type === "atom") {
+    return [vau.value];
+  } else {
+    return [...allAtoms(vau.left), ...allAtoms(vau.right)];
   }
 }
 
@@ -1336,12 +1345,30 @@ function makeRandomSexpr(rand: Rand, max_depth: number, pieces: Atom[]): Sexpr {
   }
 }
 
-function button(text: string, rect: Rectangle): boolean {
+function coloredButton(text: string, rect: Rectangle, normal: string, hover: string): boolean {
+  let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
+  let pressed = false;
+  if (canInteract() && rect.contains(mouse_pos)) {
+    ctx.fillStyle = hover;
+    pressed = input.mouse.wasPressed(MouseButton.Left);
+  } else {
+    ctx.fillStyle = normal;
+  }
+  fillRect(ctx, rect);
+  ctx.fillStyle = "black";
+  fillText(ctx, text, rect.getCenter());
+  return pressed;
+}
+
+function button(text: string, rect: Rectangle, tooltip: string | null = null): boolean {
   let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   let pressed = false;
   if (canInteract() && rect.contains(mouse_pos)) {
     ctx.fillStyle = "#BBBBBB";
     pressed = input.mouse.wasPressed(MouseButton.Left);
+    if (tooltip !== null) {
+      fillText(ctx, tooltip, rect.bottomRight)
+    }
   } else {
     ctx.fillStyle = "#444444";
   }
@@ -1457,7 +1484,11 @@ function menu_frame(delta_time: number) {
 
   for (let k = 0; k < levels.length; k++) {
     const rect = new Rectangle(new Vec2(50 + mod(k, 4) * 100, 50 + Math.floor(k / 4) * 100).scale(_1), Vec2.both(50 * _1));
-    if (button(k.toString(), rect)) {
+    const solved = levels[k].user_slots.some(x => x.stats !== null);
+    if (coloredButton(k.toString(), rect,
+      !solved ? "#444444" : "#336633",
+      !solved ? "#BBBBBB" : "#99DD99",
+    )) {
       selected_level_index = k;
     }
     if (selected_level_index === k) {
@@ -1486,9 +1517,15 @@ function menu_frame(delta_time: number) {
     drawMolecule(target, target_molecule_view);
 
     level.user_slots.forEach((slot, k) => {
-      if (button(slot.name, new Rectangle(new Vec2(canvas_size.x * .75, k * 75 * _1), new Vec2(canvas_size.x * .25, 50 * _1)))) {
+      const solved = slot.stats !== null;
+      if (coloredButton(solved ? `time: ${slot.stats!.n_steps} vaus: ${slot.stats!.n_vaus}` : slot.name,
+        new Rectangle(new Vec2(canvas_size.x * .75, k * 75 * _1), new Vec2(canvas_size.x * .25, 50 * _1)),
+        !solved ? "#444444" : "#336633",
+        !solved ? "#BBBBBB" : "#99DD99",
+      )) {
 
         STATE = "game";
+        cur_solution_slot = k;
         cur_level = level;
         cur_vaus = slot.vaus;
         vau_index_visual_offset = 0;
@@ -1807,13 +1844,24 @@ function game_frame(delta_time: number) {
 
   if (isValidVau(cur_vau)) {
     // timeline controls
+    if (button("Test", Rectangle.fromParams({
+      topRight: new Vec2(canvas_size.x - 25 * _1, 150 * _1),
+      size: new Vec2(100, 50).scale(_1)
+    }))) {
+      testing_animation_state = { test_case_n: 0, cur_iters: 0, total_iters: 0 };
+      cur_test_case = testing_animation_state.test_case_n;
+      [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+      cur_molecule_address = [];
+      cur_molecule_view.instantlyUpdateTarget();
+    }
+
     if (animation_state !== null && animation_state.speed === 0) {
       strokeRect(ctx, Rectangle
         .fromParams({ topRight: new Vec2(canvas_size.x - 175 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) })
         .resized(new Vec2(75, 75).scale(_1), "center"));
     }
     if (alwaysInteractableButton(">|", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 175 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) }))
-      && vau_index_visual_offset === 0) {
+      && vau_index_visual_offset === 0 && testing_animation_state === null) {
       if (animation_state === null) {
         // any vau, anywhere in the molecule, with paused animation
         for (let k = 0; k < cur_vaus.length; k++) {
@@ -1874,22 +1922,83 @@ function game_frame(delta_time: number) {
   {
     // select test case
     if (cur_test_case > 0) {
-      if (button('<', Rectangle.fromParams({ topLeft: new Vec2(0, 0), size: new Vec2(50, 50).scale(_1) }))) {
+      if (button("<", Rectangle.fromParams({ topLeft: new Vec2(0, 0), size: new Vec2(50, 50).scale(_1) }))) {
         cur_test_case -= 1;
         [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
         cur_molecule_address = [];
         cur_molecule_view.instantlyUpdateTarget();
+        failed_cur_test = false;
       }
     }
-    if (button('>', Rectangle.fromParams({ topLeft: new Vec2(150, 0).scale(_1), size: new Vec2(50, 50).scale(_1) }))) {
+    if (button(">", Rectangle.fromParams({ topLeft: new Vec2(150, 0).scale(_1), size: new Vec2(50, 50).scale(_1) }))) {
       cur_test_case += 1;
       [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
       cur_molecule_address = [];
       cur_molecule_view.instantlyUpdateTarget();
+      failed_cur_test = false;
     }
 
-    ctx.fillStyle = eqSexprs(cur_base_molecule, cur_target) ? "lime" : "black";
+    ctx.fillStyle = failed_cur_test ? "red" : (eqSexprs(cur_base_molecule, cur_target) ? "lime" : "black");
     fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, 25).scale(_1));
+  }
+
+  if (testing_animation_state !== null) {
+    if (animation_state === null && vau_index_visual_offset === 0) {
+      if (testing_animation_state.cur_iters > 100) {
+        // Too many iterations!
+        testing_animation_state = null;
+      } else if (eqSexprs(cur_base_molecule, cur_target)) {
+        // solved the test case
+        if (testing_animation_state.test_case_n < N_TESTS) {
+          testing_animation_state.test_case_n += 1;
+          testing_animation_state.total_iters += testing_animation_state.cur_iters;
+          testing_animation_state.cur_iters = 0;
+          cur_test_case = testing_animation_state.test_case_n;
+          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+          cur_molecule_address = [];
+          cur_molecule_view.instantlyUpdateTarget();
+        } else {
+          cur_level.user_slots[cur_solution_slot].stats = {
+            n_vaus: cur_vaus.length,
+            n_steps: testing_animation_state.total_iters / N_TESTS,
+            n_colors: new Set(cur_vaus.flatMap(allAtoms)).size,
+          }
+          testing_animation_state = null;
+          save_cur_level();
+          STATE = "menu";
+        }
+      } else {
+        // apply another vau
+        let any_changes = false;
+        for (let k = 0; k < cur_vaus.length; k++) {
+          const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+          if (bind_result !== null) {
+            cur_molecule_view.animateToAdress(bind_result.bound_at);
+            // vau_index_visual_offset += k - cur_vau_index;
+            vau_index_visual_offset = 0;
+            cur_vau_index = k;
+            let vau = cur_vaus[k];
+            animate(bind_result, vau, false, 100);
+            any_changes = true;
+            break;
+          }
+        }
+        if (!any_changes) {
+          // failed test case
+          failed_cur_test = true;
+          testing_animation_state = null;
+        } else {
+          testing_animation_state.cur_iters += 1;
+        }
+      }
+    }
+  }
+
+  if (testing_animation_state !== null) {
+    ctx.globalAlpha = .7;
+    ctx.fillStyle = COLORS.background.toHex();
+    ctx.fillRect(0, 0, canvas_size.x, canvas_size.y);
+    ctx.globalAlpha = 1;
   }
 
   let cur_mouse_place: MoleculePlace;
@@ -2099,6 +2208,7 @@ function animate(
   pause_after_binding: boolean,
   speed: number = 1,
 ) {
+  failed_cur_test = false;
   let bind_targets = bind_result.bindings.map(b => {
     return {
       binding: b,
@@ -2173,7 +2283,6 @@ function animate(
     },
     transformed_base_molecule: bind_result.new_molecule,
   };
-  console.log(animation_state.failed_bind_names);
 }
 
 let pending_dowhens: { action: () => void, condition: () => boolean }[] = [];

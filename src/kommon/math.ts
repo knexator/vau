@@ -319,6 +319,9 @@ export class Rectangle {
         return this.topLeft.x + this.size.x;
     }
 
+    public get bottomRight(): Vec2 {
+        return this.topLeft.add(this.size);
+    }
 
     resized(new_size: Vec2, fixed: "center"): Rectangle {
         return Rectangle.fromParams({ center: this.getCenter(), size: new_size });
