@@ -36,14 +36,17 @@ type Pair = {
 type Sexpr = Atom | Pair
 
 
-const input = new Input();
-const gl = initGlFromSelector("#gl_canvas");
+// const gl = initGlFromSelector("#gl_canvas");
 const ctx = initCtxFromSelector("#ctx_canvas");
-const canvas = gl.canvas as HTMLCanvasElement;
-gl.clearColor(...COLORS.background.toArray());
-const canvas_size = new Vec2(canvas.width, canvas.height);
+// const canvas = gl.canvas as HTMLCanvasElement;
+const canvas = ctx.canvas;
+// gl.clearColor(...COLORS.background.toArray());
+let canvas_size = new Vec2(canvas.width, canvas.height);
+const input = new Input(canvas);
 
-const gfx = new NaiveSpriteGraphics(gl);
+let _1 = canvas_size.x / 1280;
+
+// const gfx = new NaiveSpriteGraphics(gl);
 // const gfx2 = new ShakuStyleGraphics(gl);
 
 const DEBUG = false;
@@ -90,12 +93,12 @@ function myFillText(ctx: CanvasRenderingContext2D, text: string, pos: Vec2) {
       line = line.slice(0, n) + "    " + line.slice(n2 + 1);
       lines[k] = line;
     }
-    ctx.fillText(line, pos.x, pos.y + k * 40);
+    ctx.fillText(line, pos.x, pos.y + k * 40 * _1);
   });
   to_draw.forEach(thing => {
     let left = pos.x - ctx.measureText(lines[thing.line]).width / 2;
     // drawMolecule(thing.data, {halfside: 20, pos: new Vec2(left + CONFIG.tmp50 + thing.col * CONFIG.tmp10, pos.y + thing.line * 40)});
-    drawMolecule(thing.data, { halfside: 20, pos: new Vec2(left + 20 + thing.col * 13.7, pos.y + thing.line * 40) });
+    drawMolecule(thing.data, { halfside: 20 * _1, pos: new Vec2(left + 20 * _1 + thing.col * 13.7 * _1, pos.y + thing.line * 40 * _1) });
   })
 }
 
@@ -119,7 +122,7 @@ function lineTo(ctx: CanvasRenderingContext2D, { x, y }: Vec2) {
 }
 
 // let spike_perc = CONFIG.tmp01;
-let spike_perc = 1 / 3;
+let spike_perc = 1 / 2;
 
 // actual game logic
 let cur_base_molecule = parseSexpr("(+  (1 1 1) . (+ (1 1) . (1)))");
@@ -131,7 +134,7 @@ const base_molecule_view: MoleculeView = {
 };
 const target_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.05, .1)),
-  halfside: 35,
+  halfside: 35 * _1,
 };
 
 const base_vau_view: VauView = {
@@ -858,15 +861,15 @@ let mouse_state: {
 const misc_atoms = "v1,v2,v3".split(",").map(doAtom);
 const toolbar_atoms: { view: MoleculeView, value: Sexpr }[] = [doPair(doAtom("nil"), doAtom("nil")), ...(
   ["nil", "true", "false", "input", "output", "v1", "v2", "v3", "f1", "f2"].map(doAtom))].map((value, k) => {
-    return { value, view: { pos: new Vec2(340 + 60 * k, 40), halfside: 20 } };
+    return { value, view: { pos: new Vec2((340 + 60 * k) * _1, 40 * _1), halfside: 20 * _1 } };
   });
 
 fromCount(11, k => {
-  return { view: { pos: new Vec2(340 + 60 * k, 40), halfside: 20 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
+  return { view: { pos: new Vec2(340 + 60 * k, 40).scale(_1), halfside: 20 * _1 }, value: k === 0 ? doPair(doAtom("0"), doAtom("0")) : doAtom((k - 1).toString()) }
 });
 
 const toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = fromCount(7, k => {
-  return { view: { pos: new Vec2(400 + 95 * k, 100), halfside: 20 }, value: doAtom(`@${k}`), used: false };
+  return { view: { pos: new Vec2(400 + 95 * k, 100).scale(_1), halfside: 20 * _1 }, value: doAtom(`@${k}`), used: false };
 });
 
 // let toolbar_vaus: {}
@@ -1256,17 +1259,17 @@ function randomInt(rand: Rand, low_inclusive: number, high_exclusive: number): n
 
 // from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
 function shuffle<T>(rand: Rand, array: T[]): T[] {
-    let currentIndex = array.length, randomIndex;
-    // While there remain elements to shuffle.
-    while (currentIndex != 0) {
-        // Pick a remaining element.
-        randomIndex = Math.floor(rand.next() * currentIndex);
-        currentIndex--;
-        // And swap it with the current element.
-        [array[currentIndex], array[randomIndex]] = [
-            array[randomIndex], array[currentIndex]];
-    }
-    return array;
+  let currentIndex = array.length, randomIndex;
+  // While there remain elements to shuffle.
+  while (currentIndex != 0) {
+    // Pick a remaining element.
+    randomIndex = Math.floor(rand.next() * currentIndex);
+    currentIndex--;
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+  return array;
 }
 
 
@@ -1429,9 +1432,22 @@ function every_frame(cur_timestamp: number) {
   const delta_time = (cur_timestamp - last_timestamp) / 1000;
   last_timestamp = cur_timestamp;
   input.startFrame();
-  spike_perc = CONFIG.tmp01;
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  // spike_perc = CONFIG.tmp01;
+
+  if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+    canvas_size = new Vec2(canvas.width, canvas.height);
+    _1 = canvas_size.x / 1280;
+    ctx.font = `${Math.round(_1 * 26)}px monospace`;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+  }
+
+  // gl.clear(gl.COLOR_BUFFER_BIT);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = COLORS.background.toHex();
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 
   switch (STATE) {
@@ -1461,7 +1477,7 @@ function menu_frame(delta_time: number) {
   ctx.stroke();
 
   for (let k = 0; k < levels.length; k++) {
-    if (button(k.toString(), new Rectangle(new Vec2(50 + mod(k, 4) * 100, 50 + Math.floor(k / 4) * 100), Vec2.both(50)))) {
+    if (button(k.toString(), new Rectangle(new Vec2(50 + mod(k, 4) * 100, 50 + Math.floor(k / 4) * 100).scale(_1), Vec2.both(50 * _1)))) {
       selected_level_index = k;
     }
   }
@@ -1472,11 +1488,11 @@ function menu_frame(delta_time: number) {
     myFillText(ctx, level.description, canvas_size.mul(new Vec2(lerp(1 / 3, 3 / 4, .5), .4)));
 
     // menu sample select
-    if (button('<', new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25)))) {
+    if (button('<', new Rectangle(canvas_size.mul(new Vec2(.02 + 1 / 3, .0)), new Vec2(canvas_size.x * .05, 25 * _1)))) {
       selected_menu_test -= 1;
     }
 
-    if (button('>', Rectangle.fromParams({ topRight: canvas_size.mul(new Vec2(.75 - .02, .0)), size: new Vec2(canvas_size.x * .05, 25) }))) {
+    if (button('>', Rectangle.fromParams({ topRight: canvas_size.mul(new Vec2(.75 - .02, .0)), size: new Vec2(canvas_size.x * .05, 25 * _1) }))) {
       selected_menu_test += 1;
     }
     let rand = new Rand(`menu_sample_${level.id}_${selected_menu_test}`);
@@ -1487,7 +1503,7 @@ function menu_frame(delta_time: number) {
     drawMolecule(target, target_molecule_view);
 
     level.user_slots.forEach((slot, k) => {
-      if (button(slot.name, new Rectangle(new Vec2(canvas_size.x * .75, k * 75), new Vec2(canvas_size.x * .25, 50)))) {
+      if (button(slot.name, new Rectangle(new Vec2(canvas_size.x * .75, k * 75 * _1), new Vec2(canvas_size.x * .25, 50 * _1)))) {
 
         STATE = "game";
         cur_level = level;
@@ -1504,14 +1520,14 @@ function menu_frame(delta_time: number) {
     });
 
     {
-      if (button("New solution", new Rectangle(new Vec2(canvas_size.x * .75, level.user_slots.length * 75), new Vec2(canvas_size.x * .25, 50)))) {
+      if (button("New solution", new Rectangle(new Vec2(canvas_size.x * .75, level.user_slots.length * 75 * _1), new Vec2(canvas_size.x * .25, 50 * _1)))) {
         level.user_slots.push({ name: `Solution ${level.user_slots.length}`, vaus: [], stats: null });
       }
     }
   }
 }
 
-ctx.font = `26px monospace`;
+ctx.font = `${Math.round(_1 * 26)}px monospace`;
 ctx.textBaseline = "middle";
 ctx.textAlign = "center";
 
@@ -1692,7 +1708,7 @@ function game_frame(delta_time: number) {
     return true;
   })
 
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * _1;
   if (animation_state === null) {
     drawMolecule(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time));
   } else {
@@ -1725,8 +1741,8 @@ function game_frame(delta_time: number) {
   toolbar_templates.forEach(({ view, value }) => drawMatcher(value, view));
 
   // vau toolbar
-  if (.15 > (vauToolbarRect(cur_vau_index - vau_index_visual_offset).left / canvas_size.x)) vau_toolbar_offset += 1 * delta_time;
-  if (.85 < (vauToolbarRect(cur_vau_index - vau_index_visual_offset).right / canvas_size.x)) vau_toolbar_offset -= 1 * delta_time;
+  if (.15 > (vauToolbarRect(cur_vau_index - vau_index_visual_offset).left / canvas_size.x)) vau_toolbar_offset += _1 * delta_time;
+  if (.85 < (vauToolbarRect(cur_vau_index - vau_index_visual_offset).right / canvas_size.x)) vau_toolbar_offset -= _1 * delta_time;
   // vau_toolbar_offset = 0;
   cur_vaus.forEach((vau, k) => {
     drawVau(vau, {
@@ -1782,23 +1798,23 @@ function game_frame(delta_time: number) {
     }
     asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
     if (button("+", asdf)) {
-      cur_vaus.splice(cur_vau_index+1, 0, cloneSexpr(cur_vau) as Pair);
+      cur_vaus.splice(cur_vau_index + 1, 0, cloneSexpr(cur_vau) as Pair);
       save_cur_level();
     }
   }
-  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(vau_toolbar_offset, 1), size: new Vec2(50, 50) }))) {
+  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
     cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
     cur_vau_index += 1;
     save_cur_level();
   }
-  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length + vau_toolbar_offset, 1), size: new Vec2(50, 50) }))) {
+  if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length + vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
     cur_vaus.push(cloneSexpr(default_vau) as Pair);
     save_cur_level();
   }
 
   {
     // menu button
-    if (button("Menu", Rectangle.fromParams({ topRight: canvas_size.mulXY(1, 0), size: new Vec2(150, 50) }))) {
+    if (button("Menu", Rectangle.fromParams({ topRight: canvas_size.mulXY(1, 0), size: new Vec2(150, 50).scale(_1) }))) {
       save_cur_level();
       // recalcScores(cur_level);
       STATE = "menu"
@@ -1810,10 +1826,10 @@ function game_frame(delta_time: number) {
     // timeline controls
     if (animation_state !== null && animation_state.speed === 0) {
       strokeRect(ctx, Rectangle
-        .fromParams({ topRight: new Vec2(canvas_size.x - 175, 75), size: new Vec2(50, 50) })
+        .fromParams({ topRight: new Vec2(canvas_size.x - 175 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) })
         .resized(new Vec2(75, 75), "center"));
     }
-    if (alwaysInteractableButton(">|", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 175, 75), size: new Vec2(50, 50) }))
+    if (alwaysInteractableButton(">|", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 175 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) }))
       && vau_index_visual_offset === 0) {
       if (animation_state === null) {
         // any vau, anywhere in the molecule, with paused animation
@@ -1837,7 +1853,7 @@ function game_frame(delta_time: number) {
         animation_state.speed = 1;
       }
     }
-    if (button(">", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 100, 75), size: new Vec2(50, 50) }))) {
+    if (button(">", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 100 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) }))) {
       // any vau, anywhere in the molecule, with animation
       for (let k = 0; k < cur_vaus.length; k++) {
         const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
@@ -1852,7 +1868,7 @@ function game_frame(delta_time: number) {
         }
       }
     }
-    if (continousAlwaysInteractableButton(">>", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 25, 75), size: new Vec2(50, 50) }))
+    if (continousAlwaysInteractableButton(">>", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 25 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) }))
       && canInteract()) {
       // apply 1 vau fast
       for (let k = 0; k < cur_vaus.length; k++) {
@@ -1869,20 +1885,20 @@ function game_frame(delta_time: number) {
       }
     }
   } else {
-    fillText(ctx, "invalid vau", new Vec2(canvas_size.x - 175, 75));
+    fillText(ctx, "invalid vau", new Vec2(canvas_size.x - 175 * _1, 75 * _1));
   }
 
   {
     // select test case
     if (cur_test_case > 0) {
-      if (button('<', Rectangle.fromParams({ topLeft: new Vec2(0, 0), size: new Vec2(50, 50) }))) {
+      if (button('<', Rectangle.fromParams({ topLeft: new Vec2(0, 0), size: new Vec2(50, 50).scale(_1) }))) {
         cur_test_case -= 1;
         [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
         cur_molecule_address = [];
         cur_molecule_view.instantlyUpdateTarget();
       }
     }
-    if (button('>', Rectangle.fromParams({ topLeft: new Vec2(150, 0), size: new Vec2(50, 50) }))) {
+    if (button('>', Rectangle.fromParams({ topLeft: new Vec2(150, 0).scale(_1), size: new Vec2(50, 50).scale(_1) }))) {
       cur_test_case += 1;
       [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
       cur_molecule_address = [];
@@ -1890,7 +1906,7 @@ function game_frame(delta_time: number) {
     }
 
     ctx.fillStyle = eqSexprs(cur_base_molecule, cur_target) ? "lime" : "black";
-    fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, 25));
+    fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, 25).scale(_1));
   }
 
   let cur_mouse_place: MoleculePlace;

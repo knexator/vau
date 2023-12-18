@@ -163,7 +163,9 @@ export class MouseListener {
     public buttons: number = 0;
     public wheel: number = 0;
 
-    constructor() {
+    constructor(
+        private element: HTMLElement
+    ) {
         document.addEventListener("pointermove", this.onPointerEvent.bind(this));
         document.addEventListener("pointerup", this.onPointerEvent.bind(this));
         document.addEventListener("pointerdown", this.onPointerEvent.bind(this));
@@ -172,9 +174,10 @@ export class MouseListener {
     }
 
     private onPointerEvent(ev: MouseEvent) {
+        let rect = this.element.getBoundingClientRect();
         this.buttons = ev.buttons;
-        this.clientX = ev.clientX;
-        this.clientY = ev.clientY;
+        this.clientX = ev.clientX - rect.left;
+        this.clientY = ev.clientY - rect.top;
         // ev.preventDefault();
         // return false;
     }
@@ -190,7 +193,9 @@ export class MouseListener {
 export class KeyboardListener {
     public pressed: Set<KeyCode> = new Set();
 
-    constructor() {
+    constructor(
+        element: HTMLElement
+    ) {
         document.addEventListener("keydown", this.onKeyDown.bind(this));
         document.addEventListener("keyup", this.onKeyUp.bind(this));
     }
@@ -214,9 +219,12 @@ export class Mouse {
     public prev_clientY: number = 0;
     public prev_buttons: number = 0;
 
+    private readonly mouse_listener: MouseListener;
     constructor(
-        private readonly mouse_listener: MouseListener = new MouseListener(),
-    ) { }
+        element: HTMLElement
+    ) {
+        this.mouse_listener = new MouseListener(element);
+    }
 
     isDown(button: MouseButton): boolean {
         return Boolean(this.buttons & button);
@@ -246,9 +254,12 @@ export class Keyboard {
     public pressed = new Set<KeyCode>();
     public prev_pressed!: Set<KeyCode>;
 
+    private readonly keyboard_listener: KeyboardListener;
     constructor(
-        private readonly keyboard_listener: KeyboardListener = new KeyboardListener(),
-    ) { }
+        element: HTMLElement
+    ) {
+        this.keyboard_listener = new KeyboardListener(element);
+    }
 
     isDown(code: KeyCode): boolean {
         return this.pressed.has(code);
@@ -270,10 +281,14 @@ export class Keyboard {
 
 // Presents mouse & keyboard states
 export class Input {
+    public readonly mouse: Mouse;
+    public readonly keyboard: Keyboard;
     constructor(
-        public readonly mouse: Mouse = new Mouse(),
-        public readonly keyboard: Keyboard = new Keyboard(),
-    ) { }
+        element: HTMLElement,
+    ) {
+        this.mouse = new Mouse(element);
+        this.keyboard = new Keyboard(element);
+    }
 
     startFrame() {
         this.mouse.startFrame();

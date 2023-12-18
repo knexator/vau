@@ -13,22 +13,25 @@
             position: absolute;
             margin: 0;
             overscroll-behavior: contain;
+            background-color: #333;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        #ctx_canvas {
-            position: absolute;
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            /* pointer-events: none; */
+        #canvas_container {
+            position: relative;
+            width: 80vw;
+            height: 45vw;
         }
 
-        #gl_canvas {
+        canvas {
             position: absolute;
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            /* pointer-events: none; */
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
         }
 
 
@@ -57,9 +60,11 @@
 </head>
 
 <body>
-    <!-- <div id="loading_screen">Loading...</div> -->
-    <canvas id="gl_canvas"></canvas>
-    <canvas id="ctx_canvas"></canvas>
+    <div id="canvas_container">
+        <!-- <div id="loading_screen">Loading...</div> -->
+        <canvas id="gl_canvas"></canvas>
+        <canvas id="ctx_canvas"></canvas>
+    </div>
 </body>
 
 </html>
