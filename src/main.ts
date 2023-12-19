@@ -1191,6 +1191,52 @@ let levels: Level[] = [
     },
   ),
   new Level(
+    "setAtAddress",
+    "Write At Address:\nGiven a needle, a haystack, and an address,\nplace the needle on the haystack at that address.\nInput format is &(input . ((v1 . v2) . nil))&, with &v1& as haystack,\n&v2& as needle, and &nil& the address\nin the same format as Address Lookup.",
+    (rand) => {
+      function randomSexpr(max_depth: number, must_have: Address): Sexpr {
+        if (max_depth < must_have.length) throw new Error("");
+        if (max_depth === 0) return randomChoice(rand, misc_atoms);
+        if (must_have.length === 0) {
+          return doPair(
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+          );
+        }
+        let next_is_left = must_have[0];
+        let rest = must_have.slice(1);
+        if (next_is_left) {
+          return doPair(
+            randomSexpr(Math.max(rest.length, Math.floor(rand.next() * max_depth)), rest),
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+          );
+        } else {
+          return doPair(
+            randomSexpr(Math.floor(rand.next() * max_depth), []),
+            randomSexpr(Math.max(rest.length, Math.floor(rand.next() * max_depth)), rest),
+          );
+        }
+      }
+      let address = fromCount(randomInt(rand, 0, 4), _ => rand.next() < .5);
+      let haystack = randomSexpr(Math.max(address.length, randomInt(rand, 0, 5)), address);
+      let needle = randomSexpr(Math.max(address.length, randomInt(rand, 0, 5)), []);
+      let result = setAtAddress(haystack, address, needle);
+      return [
+        doPair(
+          doAtom("input"),
+          doPair(
+            doPair(
+              haystack,
+              needle
+            ),
+            doList(address.map(v => doAtom(v ? "true" : "false"))),
+          )
+        ),
+        result
+      ];
+    }
+  ),
+  new Level(
     "cadadar_hard",
     "Address Lookup 2:\nAs in Address Lookup, &true& means top\nhalf and &false& means bottom half.\nHowever, now they are applied from\nsmaller to bigger; given a list\nof &true& and &false& ending in a sample,\naddress that sample.\n(this one is hard to explain)",
     (rand) => {
@@ -1433,6 +1479,7 @@ function every_frame(cur_timestamp: number) {
       pos: canvas_size.mul(new Vec2(.1, .5)),
       halfside: Math.floor(canvas_size.y * .2),
     };
+    cur_molecule_view.instantlyUpdateTarget();
     target_view = {
       pos: canvas_size.mul(new Vec2(.05, .1)),
       halfside: 35 * _1,
