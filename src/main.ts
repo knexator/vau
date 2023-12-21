@@ -12,6 +12,7 @@ import { randomChoice, randomInt, randomChoiceWithoutRepeat, shuffle } from "./k
 
 const COLORS = {
   background: Color.fromInt(0x6e6e6e),
+  panel: Color.fromInt(0x505050),
   cons: Color.fromInt(0x404040),
 };
 
@@ -146,7 +147,11 @@ let base_vau_view: VauView = {
 const N_TESTS = 20;
 let failed_cur_test = false;
 
-let testing_animation_state: { test_case_n: number, cur_iters: number, total_iters: number } | null = null;
+
+let testing_animation_state: {
+  test_case_n: number, cur_iters: number, total_iters: number,
+  result: null | "success" | { test_n: number, got: Sexpr | "loop" }
+} | null = null;
 let animation_state: {
   animating_vau_view: Anim<VauView>,
   transformed_base_molecule: Sexpr,
@@ -1575,18 +1580,7 @@ function menu_frame(delta_time: number) {
         !solved ? "#444444" : "#336633",
         !solved ? "#BBBBBB" : "#99DD99",
       )) {
-
-        STATE = "game";
-        cur_solution_slot = k;
-        cur_level = level;
-        cur_vaus = slot.vaus;
-        vau_index_visual_offset = 0;
-        vau_toolbar_offset = 0;
-        cur_vau_index = 0;
-        cur_test_case = 0;
-        cur_molecule_address = [];
-        cur_molecule_view.instantlyUpdateTarget();
-        [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+        enterLevel(k, level);
         return;
       }
     });
@@ -1602,6 +1596,20 @@ function menu_frame(delta_time: number) {
 ctx.font = `${Math.round(_1 * 26)}px monospace`;
 ctx.textBaseline = "middle";
 ctx.textAlign = "center";
+
+function enterLevel(slot_index: number, level: Level) {
+  STATE = "game";
+  cur_solution_slot = slot_index;
+  cur_level = level;
+  cur_vaus = level.user_slots[slot_index].vaus;
+  vau_index_visual_offset = 0;
+  vau_toolbar_offset = 0;
+  cur_vau_index = 0;
+  cur_test_case = 0;
+  cur_molecule_address = [];
+  cur_molecule_view.instantlyUpdateTarget();
+  [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+}
 
 function game_frame(delta_time: number) {
   if (ALLOW_KEYBOARD_INPUT && canInteract()) {
@@ -1900,7 +1908,7 @@ function game_frame(delta_time: number) {
       topRight: new Vec2(canvas_size.x - 25 * _1, 150 * _1),
       size: new Vec2(100, 50).scale(_1)
     }))) {
-      testing_animation_state = { test_case_n: 0, cur_iters: 0, total_iters: 0 };
+      testing_animation_state = { test_case_n: 0, cur_iters: 0, total_iters: 0, result: null };
       cur_test_case = testing_animation_state.test_case_n;
       [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
       cur_molecule_address = [];
@@ -1994,13 +2002,14 @@ function game_frame(delta_time: number) {
     fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, 25).scale(_1));
   }
 
-  if (testing_animation_state !== null) {
+  if (testing_animation_state !== null && testing_animation_state.result === null) {
     if (animation_state === null && vau_index_visual_offset === 0) {
       if (testing_animation_state.cur_iters > 100) {
         // Too many iterations!
-        testing_animation_state = null;
+        testing_animation_state.result = { test_n: testing_animation_state.test_case_n, got: "loop" };
       } else if (eqSexprs(cur_base_molecule, cur_target)) {
         // solved the test case
+        // TODO: check that it can't go on
         if (testing_animation_state.test_case_n < N_TESTS) {
           testing_animation_state.test_case_n += 1;
           testing_animation_state.total_iters += testing_animation_state.cur_iters;
@@ -2015,9 +2024,8 @@ function game_frame(delta_time: number) {
             n_steps: testing_animation_state.total_iters / N_TESTS,
             n_colors: new Set(cur_vaus.flatMap(allAtoms)).size,
           }
-          testing_animation_state = null;
+          testing_animation_state.result = "success";
           save_cur_level();
-          STATE = "menu";
         }
       } else {
         // apply another vau
@@ -2038,7 +2046,7 @@ function game_frame(delta_time: number) {
         if (!any_changes) {
           // failed test case
           failed_cur_test = true;
-          testing_animation_state = null;
+          testing_animation_state.result = { test_n: testing_animation_state.test_case_n, got: cur_base_molecule };
         } else {
           testing_animation_state.cur_iters += 1;
         }
@@ -2051,6 +2059,58 @@ function game_frame(delta_time: number) {
     ctx.fillStyle = COLORS.background.toHex();
     ctx.fillRect(0, 0, canvas_size.x, canvas_size.y);
     ctx.globalAlpha = 1;
+
+    if (testing_animation_state.result !== null) {
+      ctx.fillStyle = COLORS.panel.toHex();
+      fillRect(ctx, new Rectangle(Vec2.zero, canvas_size).resized(canvas_size.scale(.7), "center"));
+      ctx.fillStyle = "#000000";
+      if (testing_animation_state.result === "success") {
+        let stats = cur_level.user_slots[cur_solution_slot].stats!;
+        fillText(ctx, "Level complete!", canvas_size.mulXY(.5, .3));
+        fillText(ctx, `Number of vaus: ${stats.n_vaus}`, canvas_size.mulXY(.5, .4));
+        fillText(ctx, `Average execution time: ${stats.n_steps}`, canvas_size.mulXY(.5, .5));
+        let back_to_menu = alwaysInteractableButton("Back to menu", Rectangle.fromParams({ center: canvas_size.mulXY(.35, .75), size: new Vec2(250, 50).scale(_1) }));
+        let keep_trying = alwaysInteractableButton("Keep optimizing", Rectangle.fromParams({ center: canvas_size.mulXY(.65, .75), size: new Vec2(250, 50).scale(_1) }));
+        if (back_to_menu) {
+          testing_animation_state = null;
+          STATE = "menu";
+        } else if (keep_trying) {
+          testing_animation_state = null;
+          enterLevel(cur_solution_slot, cur_level);
+        }
+      } else {
+        let [source, target] = cur_level.get_test(testing_animation_state.result.test_n);
+        fillText(ctx, `Test ${testing_animation_state.result.test_n} failed!`, canvas_size.mulXY(.5, .3));
+        fillText(ctx, "From:", canvas_size.mulXY(.25, .4));
+        fillText(ctx, "Expected:", canvas_size.mulXY(.5, .4));
+        fillText(ctx, "Got:", canvas_size.mulXY(.75, .4));
+        drawMolecule(source, {
+          pos: canvas_size.mulXY(.2, .55),
+          halfside: _1 * 75,
+        });
+        drawMolecule(target, {
+          pos: canvas_size.mulXY(.45, .55),
+          halfside: _1 * 75,
+        });
+        if (testing_animation_state.result.got === "loop") {
+          console.log();
+        } else {
+          drawMolecule(testing_animation_state.result.got, {
+            pos: canvas_size.mulXY(.7, .55),
+            halfside: _1 * 75,
+          });
+        }
+        let back_to_menu = alwaysInteractableButton("Back to menu", Rectangle.fromParams({ center: canvas_size.mulXY(.35, .75), size: new Vec2(250, 50).scale(_1) }));
+        let keep_trying = alwaysInteractableButton("Keep trying", Rectangle.fromParams({ center: canvas_size.mulXY(.65, .75), size: new Vec2(250, 50).scale(_1) }));
+        if (back_to_menu) {
+          testing_animation_state = null;
+          STATE = "menu";
+        } else if (keep_trying) {
+          testing_animation_state = null;
+          enterLevel(cur_solution_slot, cur_level);
+        }
+      }
+    }
   }
 
   let cur_mouse_place: MoleculePlace;
@@ -2205,7 +2265,7 @@ function game_frame(delta_time: number) {
 
   // set cursor
   switch (mouse_state.type) {
-    case "none":{
+    case "none": {
       if (cur_mouse_place.type === "none") {
         setCursor("default");
       } else {

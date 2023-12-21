@@ -1,0 +1,39 @@
+(vau ((matcher template) sample)) =>
+(setAtAdress sample (getAdressOf matcher sample) template)
+
+(setAtAdress main address value) =>
+(cond
+    ((isNil address)
+        value)
+    ((isLeft (car address))
+        (cons (setAtAdress (car main) (cdr address) value) (cdr main)))
+    ((isRight (car address))
+        (cons (car main) (setAtAdress (cdr main) (cdr address) value)))
+)
+
+(setAtAdress @main nil @value) => value
+(setAtAdress (@a @b) (left @x) @value) => ((setAtAdress @a @x @value) @b)
+(setAtAdress (@a @b) (right @x) @value) => (@a (setAtAdress @b @x @value))
+
+
+(getAdressOf needle haystack) =>
+(cond
+    ((isEq needle haystack) nil)
+    ((isAtom haystack) false) 
+    a = (getAdressOf needle (car haystack))
+    if isFalse(a):
+        b = (getAdressOf needle (cdr haystack))
+        if isFalse(b):
+            return false
+        return (cons right b)
+    return (cons left a)
+)
+
+(getAdressOf @needle @haystack) => (getAdressOf_helper @needle @haystack (eq @needle @haystack))
+(getAdressOf_helper @needle @haystack true) => nil
+(getAdressOf_helper @needle (@a @b) false) => (getAdressOf_helper2 (getAdressOf @needle @a) @needle @b)
+(getAdressOf_helper2 false @needle @b) => (getAdressOf_helper3 (getAdressOf @needle @b))
+(getAdressOf_helper3 false) => false
+(getAdressOf_helper3 @address) => (right @address)
+(getAdressOf_helper2 @address @needle @b) => (left @address)
+(getAdressOf_helper @needle @atom_haystack false) => false
