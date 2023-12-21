@@ -730,6 +730,10 @@ function getMatcherChildView(parent: VauView, is_left: boolean): VauView {
   };
 }
 
+function setCursor(value: "default" | "pointer" | "grab" | "grabbing"): void {
+  document.body.style.cursor = value;
+}
+
 type Anim<T> = { progress: number, duration: number, callback: (t: number) => T }
 
 function advanceAnim<T>(anim: Anim<T>, dt: number): T {
@@ -1410,6 +1414,7 @@ function button(text: string, rect: Rectangle, tooltip: string | null = null): b
   let mouse_pos = new Vec2(input.mouse.clientX, input.mouse.clientY);
   let pressed = false;
   if (canInteract() && rect.contains(mouse_pos)) {
+    // setCursor("pointer");
     ctx.fillStyle = "#BBBBBB";
     pressed = input.mouse.wasPressed(MouseButton.Left);
     if (tooltip !== null) {
@@ -2196,6 +2201,21 @@ function game_frame(delta_time: number) {
     }
     default:
       throw new Error("");
+  }
+
+  // set cursor
+  switch (mouse_state.type) {
+    case "none":{
+      if (cur_mouse_place.type === "none") {
+        setCursor("default");
+      } else {
+        setCursor("grab");
+      }
+      break;
+    }
+    case "holding":
+      setCursor("grabbing");
+      break;
   }
 
   function vauToolbarRect(index: number): Rectangle {
