@@ -1849,7 +1849,7 @@ function game_frame(delta_time: number) {
     asdf.topLeft = asdf.topLeft.subX(asdf.size.x);
     if (button("+", asdf)) {
       cur_vaus.splice(cur_vau_index, 0, cloneSexpr(cur_vau) as Pair);
-      cur_vau_index += 1;
+      vau_index_visual_offset = -1;
       save_cur_level();
     }
     asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
@@ -1879,16 +1879,21 @@ function game_frame(delta_time: number) {
     asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
     if (button("+", asdf)) {
       cur_vaus.splice(cur_vau_index + 1, 0, cloneSexpr(cur_vau) as Pair);
+      cur_vau_index += 1;
+      vau_index_visual_offset = 1;
       save_cur_level();
     }
   }
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
     cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
-    cur_vau_index += 1;
+    vau_index_visual_offset = -(cur_vau_index + 1);
+    cur_vau_index = 0;
     save_cur_level();
   }
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length + vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
     cur_vaus.push(cloneSexpr(default_vau) as Pair);
+    vau_index_visual_offset = cur_vaus.length - cur_vau_index - 1;
+    cur_vau_index = cur_vaus.length - 1;
     save_cur_level();
   }
 
