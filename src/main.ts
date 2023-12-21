@@ -134,8 +134,12 @@ let base_molecule_view: MoleculeView = {
   pos: canvas_size.mul(new Vec2(.1, .5)),
   halfside: Math.floor(canvas_size.y * .2),
 };
+let source_view: MoleculeView = {
+  pos: canvas_size.mul(new Vec2(.015, .15)),
+  halfside: 35 * _1,
+};
 let target_view: MoleculeView = {
-  pos: canvas_size.mul(new Vec2(.05, .1)),
+  pos: canvas_size.mul(new Vec2(.11, .15)),
   halfside: 35 * _1,
 };
 
@@ -1490,8 +1494,12 @@ function every_frame(cur_timestamp: number) {
       halfside: Math.floor(canvas_size.y * .2),
     };
     cur_molecule_view.instantlyUpdateTarget();
+    source_view = {
+      pos: canvas_size.mul(new Vec2(.015, .15)),
+      halfside: 35 * _1,
+    };
     target_view = {
-      pos: canvas_size.mul(new Vec2(.05, .1)),
+      pos: canvas_size.mul(new Vec2(.11, .15)),
       halfside: 35 * _1,
     };
     base_vau_view = {
@@ -1794,7 +1802,6 @@ function game_frame(delta_time: number) {
   } else {
     drawMoleculeDuringAnimation(cur_base_molecule, advanceAnim(cur_molecule_view.anim, delta_time), []);
   }
-  drawMolecule(cur_target, target_view);
   if (animation_state !== null) {
     drawVauDuringAnimtion(cur_vau, advanceAnim(animation_state.animating_vau_view, animation_state.speed * delta_time));
     if (animation_state.floating_binds !== null) {
@@ -2005,6 +2012,19 @@ function game_frame(delta_time: number) {
 
     ctx.fillStyle = failed_cur_test ? "red" : (eqSexprs(cur_base_molecule, cur_target) ? "lime" : "black");
     fillText(ctx, `Test ${cur_test_case}`, new Vec2(100, 25).scale(_1));
+
+    let [cur_original_molecule, _] = cur_level.get_test(cur_test_case);
+    drawMolecule(cur_original_molecule, source_view);
+    drawMolecule(cur_target, target_view);
+    let arrow_tip = target_view.pos.subX(_1 * 30);
+    ctx.beginPath();
+    moveTo(ctx, arrow_tip);
+    lineTo(ctx, arrow_tip.subX(_1 * 30));
+    moveTo(ctx, arrow_tip);
+    lineTo(ctx, arrow_tip.subXY(_1 * 10, _1 * 10));
+    moveTo(ctx, arrow_tip);
+    lineTo(ctx, arrow_tip.subXY(_1 * 10, -_1 * 10));
+    ctx.stroke();
   }
 
   if (testing_animation_state !== null && testing_animation_state.result === null) {
