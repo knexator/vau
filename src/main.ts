@@ -10,6 +10,8 @@ import grammar from "./sexpr.pegjs?raw"
 import * as peggy from "peggy";
 import { randomChoice, randomInt, randomChoiceWithoutRepeat, shuffle } from "./kommon/random";
 
+// TODO: zoom on test preview?
+
 const COLORS = {
   background: Color.fromInt(0x6e6e6e),
   panel: Color.fromInt(0x505050),
@@ -2032,26 +2034,6 @@ function game_frame(delta_time: number) {
       if (testing_animation_state.cur_iters > 100) {
         // Too many iterations!
         testing_animation_state.result = { test_n: testing_animation_state.test_case_n, got: "loop" };
-      } else if (eqSexprs(cur_base_molecule, cur_target)) {
-        // solved the test case
-        // TODO: check that it can't go on
-        if (testing_animation_state.test_case_n < N_TESTS) {
-          testing_animation_state.test_case_n += 1;
-          testing_animation_state.total_iters += testing_animation_state.cur_iters;
-          testing_animation_state.cur_iters = 0;
-          cur_test_case = testing_animation_state.test_case_n;
-          [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
-          cur_molecule_address = [];
-          cur_molecule_view.instantlyUpdateTarget();
-        } else {
-          cur_level.user_slots[cur_solution_slot].stats = {
-            n_vaus: cur_vaus.length,
-            n_steps: testing_animation_state.total_iters / N_TESTS,
-            n_colors: new Set(cur_vaus.flatMap(allAtoms)).size,
-          }
-          testing_animation_state.result = "success";
-          save_cur_level();
-        }
       } else {
         // apply another vau
         let any_changes = false;
@@ -2069,9 +2051,32 @@ function game_frame(delta_time: number) {
           }
         }
         if (!any_changes) {
-          // failed test case
-          failed_cur_test = true;
-          testing_animation_state.result = { test_n: testing_animation_state.test_case_n, got: cur_base_molecule };
+          // finished executing
+          if (eqSexprs(cur_base_molecule, cur_target)) {
+            // solved the test case
+            if (testing_animation_state.test_case_n < N_TESTS) {
+              testing_animation_state.test_case_n += 1;
+              testing_animation_state.total_iters += testing_animation_state.cur_iters;
+              testing_animation_state.cur_iters = 0;
+              cur_test_case = testing_animation_state.test_case_n;
+              [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+              cur_molecule_address = [];
+              cur_molecule_view.instantlyUpdateTarget();
+            } else {
+              cur_level.user_slots[cur_solution_slot].stats = {
+                n_vaus: cur_vaus.length,
+                n_steps: testing_animation_state.total_iters / N_TESTS,
+                n_colors: new Set(cur_vaus.flatMap(allAtoms)).size,
+              }
+              testing_animation_state.result = "success";
+              save_cur_level();
+            }
+          } else {
+            // failed test case
+            cur_level.user_slots[cur_solution_slot].stats = null;
+            failed_cur_test = true;
+            testing_animation_state.result = { test_n: testing_animation_state.test_case_n, got: cur_base_molecule };
+          }
         } else {
           testing_animation_state.cur_iters += 1;
         }
@@ -2118,7 +2123,8 @@ function game_frame(delta_time: number) {
           halfside: _1 * 75,
         });
         if (testing_animation_state.result.got === "loop") {
-          console.log();
+          ctx.fillStyle = "black";
+          fillText(ctx, "Infinite loop", canvas_size.mulXY(.75, .55));
         } else {
           drawMolecule(testing_animation_state.result.got, {
             pos: canvas_size.mulXY(.7, .55),
