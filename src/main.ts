@@ -1597,7 +1597,7 @@ ctx.font = `${Math.round(_1 * 26)}px monospace`;
 ctx.textBaseline = "middle";
 ctx.textAlign = "center";
 
-function enterLevel(slot_index: number, level: Level) {
+function enterLevel(slot_index: number, level: Level, test_case: number = 0) {
   STATE = "game";
   cur_solution_slot = slot_index;
   cur_level = level;
@@ -1605,7 +1605,7 @@ function enterLevel(slot_index: number, level: Level) {
   vau_index_visual_offset = 0;
   vau_toolbar_offset = 0;
   cur_vau_index = 0;
-  cur_test_case = 0;
+  cur_test_case = test_case;
   cur_molecule_address = [];
   cur_molecule_view.instantlyUpdateTarget();
   [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
@@ -2074,14 +2074,14 @@ function game_frame(delta_time: number) {
         fillText(ctx, "Level complete!", canvas_size.mulXY(.5, .3));
         fillText(ctx, `Number of vaus: ${stats.n_vaus}`, canvas_size.mulXY(.5, .4));
         fillText(ctx, `Average execution time: ${stats.n_steps}`, canvas_size.mulXY(.5, .5));
-        let back_to_menu = alwaysInteractableButton("Back to menu", Rectangle.fromParams({ center: canvas_size.mulXY(.35, .75), size: new Vec2(250, 50).scale(_1) }));
-        let keep_trying = alwaysInteractableButton("Keep optimizing", Rectangle.fromParams({ center: canvas_size.mulXY(.65, .75), size: new Vec2(250, 50).scale(_1) }));
+        let keep_trying = alwaysInteractableButton("Keep optimizing", Rectangle.fromParams({ center: canvas_size.mulXY(.35, .75), size: new Vec2(250, 50).scale(_1) }));
+        let back_to_menu = alwaysInteractableButton("Back to menu", Rectangle.fromParams({ center: canvas_size.mulXY(.65, .75), size: new Vec2(250, 50).scale(_1) }));
         if (back_to_menu) {
           testing_animation_state = null;
           STATE = "menu";
         } else if (keep_trying) {
           testing_animation_state = null;
-          enterLevel(cur_solution_slot, cur_level);
+          enterLevel(cur_solution_slot, cur_level, 0);
         }
       } else {
         let [source, target] = cur_level.get_test(testing_animation_state.result.test_n);
@@ -2111,8 +2111,9 @@ function game_frame(delta_time: number) {
           testing_animation_state = null;
           STATE = "menu";
         } else if (keep_trying) {
+          let test_case = testing_animation_state.result.test_n;
           testing_animation_state = null;
-          enterLevel(cur_solution_slot, cur_level);
+          enterLevel(cur_solution_slot, cur_level, test_case);
         }
       }
     }
