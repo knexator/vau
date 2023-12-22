@@ -2034,6 +2034,8 @@ function game_frame(delta_time: number) {
       if (testing_animation_state.cur_iters > 100) {
         // Too many iterations!
         testing_animation_state.result = { test_n: testing_animation_state.test_case_n, got: "loop" };
+        cur_level.user_slots[cur_solution_slot].stats = null;
+        failed_cur_test = true;
       } else {
         // apply another vau
         let any_changes = false;
