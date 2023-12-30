@@ -6,9 +6,11 @@ import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
 
-import grammar from "./sexpr.pegjs?raw"
-import * as peggy from "peggy";
 import { randomChoice, randomInt, randomChoiceWithoutRepeat, shuffle } from "./kommon/random";
+import { Sexpr, parseSexpr, Pair, Atom } from "./vau_logic";
+import { Address, cloneSexpr, getAtAddress } from "./vau_logic";
+import { Binding, setAtAddress, afterRecursiveVau, isValidAddress, afterVau, findBindingTargets } from "./vau_logic";
+import { isValidVau, doAtom, doPair, doList, eqSexprs, containsTemplate } from "./vau_logic";
 
 // TODO: zoom on test preview?
 
@@ -19,26 +21,6 @@ const COLORS = {
 };
 
 const ALLOW_KEYBOARD_INPUT = false;
-
-// parser.parse(str)
-const parseSexpr: (input: string) => Sexpr = (() => {
-  const parser = peggy.generate(grammar);
-  return x => parser.parse(x);
-})();
-
-type Atom = {
-  type: "atom",
-  value: string,
-}
-
-type Pair = {
-  type: "pair",
-  left: Sexpr,
-  right: Sexpr,
-}
-
-type Sexpr = Atom | Pair
-
 
 // const gl = initGlFromSelector("#gl_canvas");
 const ctx = initCtxFromSelector("#ctx_canvas");
@@ -199,150 +181,6 @@ let vau_index_visual_offset = 0;
 let vau_toolbar_offset = 0;
 
 let cur_test_case: number = 0;
-
-type Address = boolean[];
-
-function getAtAddress(molecule: Sexpr, address: Address): Sexpr {
-  let result = molecule;
-  for (let k = 0; k < address.length; k++) {
-    if (result.type === "atom") throw new Error(`cant access ${molecule} at ${address}`);
-    result = address[k] ? result.left : result.right;
-  }
-  return result;
-}
-
-function cloneSexpr(sexpr: Sexpr): Sexpr {
-  if (sexpr.type === "atom") {
-    return { type: "atom", value: sexpr.value };
-  } else {
-    return {
-      type: "pair",
-      left: cloneSexpr(sexpr.left),
-      right: cloneSexpr(sexpr.right)
-    };
-  }
-}
-
-/** returns a copy */
-function setAtAddress(molecule: Sexpr, address: Address, value: Sexpr): Sexpr {
-  if (address.length === 0) return value;
-  const result = cloneSexpr(molecule);
-  let parent = result;
-  for (let k = 0; k < address.length - 1; k++) {
-    if (parent.type === "atom") throw new Error(`cant set ${molecule} at address ${address}`);
-    parent = address[k] ? parent.left : parent.right;
-  }
-  if (parent.type === "atom") throw new Error(`cant set ${molecule} at address ${address}`);
-  if (address[address.length - 1]) {
-    parent.left = value;
-  } else {
-    parent.right = value;
-  }
-  return result;
-}
-
-type Binding = {
-  name: string,
-  address: Address,
-  value: Sexpr,
-}
-
-// returns null if the template doesn't fit
-function generateBindings(molecule: Sexpr, template: Sexpr, address: Address = []): Binding[] | null {
-  if (template.type === "atom") {
-    if (template.value[0] === "@") {
-      return [{ name: template.value, address: address, value: structuredClone(molecule) }];
-    } else if (molecule.type === "atom" && molecule.value === template.value) {
-      return [];
-    } else {
-      return null;
-    }
-  } else {
-    if (molecule.type === "atom") {
-      return null;
-    } else {
-      const left_match = generateBindings(molecule.left, template.left, [...address, true]);
-      const right_match = generateBindings(molecule.right, template.right, [...address, false]);
-      if (left_match === null || right_match === null) {
-        return null;
-      } else {
-        return left_match.concat(right_match);
-      }
-    }
-  }
-}
-
-function findBindingTargets(template: Sexpr, binding: Binding, cur_address: Address): Address[] {
-  if (template.type === "atom") {
-    if (template.value[0] === "@" && binding.name === template.value) {
-      return [cur_address];
-    } else {
-      return [];
-    }
-  } else {
-    return [
-      ...findBindingTargets(template.left, binding, [...cur_address, true]),
-      ...findBindingTargets(template.right, binding, [...cur_address, false])
-    ];
-  }
-}
-
-function applyBindings(template: Sexpr, bindings: Binding[]): Sexpr {
-  if (template.type === "atom") {
-    if (template.value[0] === "@") {
-      const matching_binding = bindings.find(({ name }) => name === template.value);
-      if (matching_binding !== undefined) {
-        return matching_binding.value;
-      } else {
-        return template;
-      }
-    } else {
-      return template;
-    }
-  } else {
-    return {
-      type: "pair",
-      left: applyBindings(template.left, bindings),
-      right: applyBindings(template.right, bindings)
-    };
-  }
-}
-
-function afterVau(molecule: Sexpr, vau: Pair): { new_molecule: Sexpr, bindings: Binding[] } | null {
-  const bindings = generateBindings(molecule, vau.left);
-  if (bindings === null) return null;
-  return { new_molecule: applyBindings(vau.right, bindings), bindings: bindings };
-}
-
-function afterRecursiveVau(molecule: Sexpr, vau: Pair): { bound_at: Address, new_molecule: Sexpr, bindings: Binding[] } | null {
-  let addresses_to_try: Address[] = [[]];
-  while (addresses_to_try.length > 0) {
-    const cur_address = addresses_to_try.shift()!;
-    const cur_molecule = getAtAddress(molecule, cur_address);
-    const result = afterVau(cur_molecule, vau);
-    if (result !== null) {
-      return {
-        bound_at: cur_address,
-        new_molecule: setAtAddress(molecule, cur_address, result.new_molecule),
-        bindings: result.bindings,
-      };
-    } else if (cur_molecule.type === "pair") {
-      addresses_to_try.push([...cur_address, true]);
-      addresses_to_try.push([...cur_address, false]);
-    }
-  }
-  return null;
-}
-
-
-function isValidAddress(molecule: Sexpr, address: Address): boolean {
-  try {
-    getAtAddress(molecule, address);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
 
 const colorFromAtom: (atom: string) => Color = (() => {
   let generated = new Map<string, Color>();
@@ -892,37 +730,6 @@ let toolbar_templates: { view: VauView, value: Sexpr, used: boolean }[] = fromCo
   return { view: { pos: new Vec2(400 + 95 * k, 100).scale(_1), halfside: 20 * _1 }, value: doAtom(`@${k}`), used: false };
 });
 
-// let toolbar_vaus: {}
-
-function doList(values: Sexpr[]): Sexpr {
-  let result = doAtom("nil") as Sexpr;
-  reversedForEach(values, v => {
-    result = doPair(v, result);
-  });
-  return result;
-}
-
-function doPair(left: Sexpr, right: Sexpr): Pair {
-  return { type: "pair", left, right };
-}
-
-function doAtom(value: string): Atom {
-  return { type: "atom", value };
-}
-
-function containsTemplate(v: Sexpr): boolean {
-  if (v.type === "atom") return v.value[0] === "@";
-  return containsTemplate(v.left) || containsTemplate(v.right);
-}
-
-function eqSexprs(a: Sexpr, b: Sexpr): boolean {
-  if (a.type === "atom" && b.type === "atom") return a.value === b.value
-  if (a.type === "pair" && b.type === "pair") {
-    return eqSexprs(a.left, b.left) && eqSexprs(a.right, b.right);
-  }
-  return false;
-}
-
 class Level {
   constructor(
     public id: string,
@@ -935,6 +742,7 @@ class Level {
     return this.generate_test(new Rand(`test_${n}`));
   }
 }
+
 type SolutionSlot = {
   name: string,
   vaus: Pair[],
@@ -1295,26 +1103,6 @@ let levels: Level[] = [
     }
   ),
 ];
-
-function isValidVau(vau: Pair): boolean {
-  function getAllTemplateNames(v: Sexpr): string[] {
-    if (v.type === "atom") {
-      if (v.value[0] === "@") {
-        return [v.value];
-      } else {
-        return [];
-      }
-    } else {
-      return [...getAllTemplateNames(v.left), ...getAllTemplateNames(v.right)];
-    }
-  }
-  let source_templates = getAllTemplateNames(vau.left);
-  // no repeated templates
-  if (new Set(source_templates).size < source_templates.length) return false;
-  // no orphan templates
-  if (getAllTemplateNames(vau.right).some(x => !source_templates.includes(x))) return false;
-  return true;
-}
 
 function canInteract() {
   return (testing_animation_state === null) && (vau_index_visual_offset === 0) && (animation_state === null);
