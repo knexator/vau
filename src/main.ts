@@ -1102,6 +1102,26 @@ let levels: Level[] = [
       ];
     }
   ),
+  new Level(
+    "interpreter",
+    "Interpreter 1:\nPLAYTESTERS, IGNORE THIS ONE FOR NOW\nGiven a (sample, vau) pair,\napply the vau to the sample.\nVau format: (matcher, template);\nNo wildcards. Recurse into the sample.",
+    (_rand) => {
+      return [
+        parseSexpr('(input . ( ( ( true . false ) . (false . true) ) . ((true . true) . (true . false))))'),
+        parseSexpr('(output . ((true . true) . (false . true)))')
+      ]
+    }
+  ),
+  new Level(
+    "interpreter",
+    "Interpreter 2:\nPLAYTESTERS, IGNORE THIS ONE FOR NOW\nGiven a (sample, vau) pair,\napply the vau to the sample.\nVau format: (matcher, template);\nwildcards are lists of spiky purple.\nDon't recurse.",
+    (_rand) => {
+      return [
+        parseSexpr('(input . ( ( ( true . ( f1 . nil ) ) . ( ( f1 . nil ) . true ) ) . (true . false)))'),
+        parseSexpr('(output . (false . true))')
+      ]
+    }
+  )
 ];
 
 function canInteract() {
