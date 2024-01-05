@@ -936,6 +936,47 @@ let levels: Level[] = [
     }
   ),
   new Level(
+    "palindrome",
+    "Palindrome:\nGiven a list of (&v1&, &v2&, &v3&),\nreturn &true& if it's a\npalindrome and &false& otherwise.",
+    (rand) => {
+      function isPalindrome(v: Atom[]): boolean {
+        for (let k = 0; k < Math.floor(v.length / 2); k++) {
+          if (v[k].value !== v[v.length - k - 1].value) return false;
+        }
+        return true;
+      }
+
+      if (rand.next() < .5) {
+        let values = fromCount(randomInt(rand, 2, 8), _ => randomChoice(rand, misc_atoms));
+        // avoid accidental palindrome
+        while (isPalindrome(values)) {
+          values = fromCount(randomInt(rand, 1, 8), _ => randomChoice(rand, misc_atoms));
+        }
+        return [
+          doPair(doAtom("input"), doList(values)),
+          doAtom("false")
+        ];
+      } else {
+        if (rand.next() < .5) {
+          let middle_value = randomChoice(rand, misc_atoms);
+          let values = fromCount(randomInt(rand, 0, 4), _ => randomChoice(rand, misc_atoms));
+          let reversed_values = values.slice().reverse();
+          return [
+            doPair(doAtom("input"), doList([...values, middle_value, ...reversed_values])),
+            doAtom("true")
+          ];
+        } else {
+          let values = fromCount(randomInt(rand, 1, 4), _ => randomChoice(rand, misc_atoms));
+          let reversed_values = values.slice().reverse();
+          return [
+            doPair(doAtom("input"), doList([...values, ...reversed_values])),
+            doAtom("true")
+          ];
+        }
+      }
+    }
+  ),
+  new Level(
     "cadadar_easy",
     "Address Lookup:\nWe have &(input . (f1 . v1))&, where &v1& is a sample\nand &f1& is an address in that sample.\nThe address is a list of &true& and &false&,\nwhere &true& means the top subsample\nand &false& the bottom one. For example,\n&(true true)& would mean 'the top half of the\ntop half of the sample'; for\n&((v1 . v2) . v3)&, it would be &v1&.",
     (rand) => {
