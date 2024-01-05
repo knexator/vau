@@ -870,6 +870,18 @@ let levels: Level[] = [
     },
   ),
   new Level(
+    "count",
+    "Count &v1&:\nGiven a list of (&v1&, &v2&, &v3&),\nreturn the number of &v1&",
+    (rand) => {
+      rand.next();
+      let values = fromCount(randomInt(rand, 0, 10), _ => randomChoice(rand, misc_atoms));
+      return [
+        doPair(doAtom("input"), doList(values)),
+        makePeanoSexpr(values.filter(v => v.value === "v1").length)
+      ];
+    }
+  ),
+  new Level(
     "reverse",
     "List Reverse:\nGiven a list of &v1&, &v2&, &v3&,\nmarked with &input& at the start,\nreverse it.",
     (rand) => {
