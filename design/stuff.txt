@@ -1,0 +1,24 @@
+matcher = (@x #y . @z)
+pattern = (#y @x . @z)
+
+matcher = ((@ . x) (# . y) . (@ . z))
+pattern = ((# . y) (@ . x) . (@ . z))
+
+// molecule = (a b y c d)
+// molecule, expanded        = (a . (b y . (c d)))
+// molecule + vau at [right] = (a . (y b . (c d)))
+
+molecule = (b y c d)
+molecule, expanded   = (b y . (c d))
+molecule + vau at [] = (y b . (c d))
+
+((matcher . pattern) . molecule)
+
+(stuff = (matcher.left . molecule.left))
+
+
+
+
+((molecule) (matcher . pattern) . molecule)
+
+((matcher . pattern) . molecule)
