@@ -765,6 +765,7 @@ let selected_menu_test: number = 0
 let cur_solution_slot: number = 0;
 let cur_level: Level;
 
+// TODO: search for the given substring in the string
 let levels: Level[] = [
   new Level(
     "simplest",
@@ -1050,6 +1051,23 @@ let levels: Level[] = [
       return [
         doPair(doAtom("input"), doPair(makePeanoSexpr(n1), makePeanoSexpr(n2))),
         makePeanoSexpr(n1 * n2),
+      ];
+    },
+  ),
+  new Level(
+    "search",
+    "Needle in a Haystack:\nGiven a short list and a long list,\nreturn the position of the short\nlist on the long one.",
+    (rand) => {
+      let index = randomInt(rand, 0, 6);
+      let needle = fromCount(randomInt(rand, 1, 4), _ => randomChoice(rand, misc_atoms));
+      let haystack = [
+        ...fromCount(index, _ => randomChoice(rand, misc_atoms)),
+        ...needle,
+        ...fromCount(randomInt(rand, 0, 6), _ => randomChoice(rand, misc_atoms)),
+      ];
+      return [
+        doPair(doAtom("input"), doPair(doList(needle), doList(haystack))),
+        makePeanoSexpr(index),
       ];
     },
   ),
