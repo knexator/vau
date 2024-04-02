@@ -19,6 +19,10 @@ export function eqArrays<T>(a: T[], b: T[]): boolean {
     return a.length === b.length && a.every((v, k) => v === b[k]);
 }
 
+export function eqArraysWithFn<T>(a: T[], b: T[], equal: (x: T, y: T) => boolean): boolean {
+    return a.length === b.length && a.every((v, k) => equal(v, b[k]));
+}
+
 export function reversed<T>(array: T[]) {
     return array.map((_item, idx) => array[array.length - 1 - idx]);
 }

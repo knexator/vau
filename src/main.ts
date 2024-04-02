@@ -1,7 +1,7 @@
 import GUI from "lil-gui";
 import { Input, KeyCode, Mouse, MouseButton } from "./kommon/input";
 import { Color, NaiveSpriteGraphics, ShakuStyleGraphics, initCtxFromSelector, initGlFromSelector } from "./kommon/kanvas";
-import { DefaultMap, commonPrefixLen, eqArrays, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
+import { DefaultMap, commonPrefixLen, eqArrays, eqArraysWithFn, findIndex, fromCount, fromRange, objectMap, reversed, reversedForEach, zip2 } from "./kommon/kommon";
 import { Rectangle, Vec2, mod, towards as approach, lerp, inRange, rand05, remap, clamp, towards, argmax } from "./kommon/math";
 import { canvasFromAscii } from "./kommon/spritePS";
 import Rand, { PRNG } from 'rand-seed';
@@ -1065,6 +1065,22 @@ let levels: Level[] = [
         ...needle,
         ...fromCount(randomInt(rand, 0, 6), _ => randomChoice(rand, misc_atoms)),
       ];
+      if (index === 5) {
+        console.log(needle);
+        console.log(haystack);
+      }
+      // avoid accidental needles before haystack
+      let checked = false;
+      while (!checked) {
+        checked = true;
+        for (let k = 0; k < index; k++) {
+          if (eqArraysWithFn(needle, haystack.slice(k, k + needle.length), (x,y) => x.value === y.value)) {
+            haystack[k] = randomChoice(rand, misc_atoms);
+            checked = false;
+            break;
+          }
+        }
+      }
       return [
         doPair(doAtom("input"), doPair(doList(needle), doList(haystack))),
         makePeanoSexpr(index),
