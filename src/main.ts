@@ -12,6 +12,7 @@ import { Address, cloneSexpr, getAtAddress } from "./vau_logic";
 import { Binding, setAtAddress, afterRecursiveVau, isValidAddress, afterVau, findBindingTargets } from "./vau_logic";
 import { isValidVau, doAtom, doPair, doList, eqSexprs, containsTemplate } from "./vau_logic";
 
+// TODO: code for single use vau
 // TODO: zoom on test preview?
 
 const COLORS = {
@@ -164,7 +165,8 @@ const default_vau: Pair = parseSexpr(`(
   (@2 . nil)
 )`) as Pair;
 
-let cur_vaus: Pair[] = [
+type UserVau = {data: Pair, single_use: boolean, used: boolean};
+let cur_vaus: UserVau[] = [
   parseSexpr(`(
     (+ . ((@h . @t) . @b))
     .
@@ -175,7 +177,7 @@ let cur_vaus: Pair[] = [
     .
     @a
   )`) as Pair,
-];
+].map(x => ({data: x, single_use: false, used: false}));
 let cur_vau_index = 0;
 let vau_index_visual_offset = 0;
 let vau_toolbar_offset = 0;
@@ -745,7 +747,7 @@ class Level {
 
 type SolutionSlot = {
   name: string,
-  vaus: Pair[],
+  vaus: UserVau[],
   stats: null | {
     n_vaus: number,
     n_colors: number,
@@ -1222,8 +1224,17 @@ function canInteract() {
     if (stuff !== null) {
       level.user_slots = JSON.parse(stuff);
       level.user_slots.forEach(x => {
-        if (x.stats === undefined) x.stats = null;
-      })
+        if (x.stats === undefined) {
+          x.stats = null;
+        }
+        x.vaus = x.vaus.map(v => {
+          if (v.data === undefined) {
+            return {data: v as never as Pair, used: false, single_use: false} as UserVau;
+          } else {
+            return v;
+          }
+        })
+      });
       // recalcScores(level);
     }
   });
@@ -1248,7 +1259,7 @@ function recalcScores(level: Level) {
         any_changes = false;
         // try all vaus
         for (let k = 0; k < slot.vaus.length; k++) {
-          const bind_result = afterRecursiveVau(molecule, slot.vaus[k]);
+          const bind_result = afterRecursiveVau(molecule, slot.vaus[k].data);
           if (bind_result !== null) {
             cur_base_molecule = bind_result.new_molecule;
             any_changes = true;
@@ -1266,7 +1277,7 @@ function recalcScores(level: Level) {
       slot.stats = {
         n_vaus: slot.vaus.length,
         n_steps: total_steps / N_TESTS,
-        n_colors: new Set(slot.vaus.flatMap(allAtoms)).size,
+        n_colors: new Set(slot.vaus.flatMap(x => allAtoms(x.data))).size,
       }
     } else {
       slot.stats = null;
@@ -1553,7 +1564,7 @@ function game_frame(delta_time: number) {
         cur_vau_index -= 1;
         vau_index_visual_offset -= 1;
       } else {
-        cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
+        cur_vaus.unshift({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
         save_cur_level();
       }
     }
@@ -1562,7 +1573,7 @@ function game_frame(delta_time: number) {
         cur_vau_index += 1;
         vau_index_visual_offset += 1;
       } else {
-        cur_vaus.push(cloneSexpr(default_vau) as Pair);
+        cur_vaus.push({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
         save_cur_level();
         cur_vau_index += 1;
         vau_index_visual_offset += 1;
@@ -1597,10 +1608,10 @@ function game_frame(delta_time: number) {
 
   }
   if (cur_vaus.length === 0) {
-    cur_vaus.push(cloneSexpr(default_vau) as Pair);
+    cur_vaus.push({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
     save_cur_level();
   }
-  const cur_vau = cur_vaus[cur_vau_index];
+  const cur_vau = cur_vaus[cur_vau_index].data;
 
   if (ALLOW_KEYBOARD_INPUT && canInteract()) {
     if (input.keyboard.wasPressed(KeyCode.KeyZ)) {
@@ -1618,7 +1629,7 @@ function game_frame(delta_time: number) {
     } else if (input.keyboard.wasPressed(KeyCode.KeyC)) {
       // apply all vaus to whole molecule until one works
       for (let k = 0; k < cur_vaus.length; k++) {
-        const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
+        const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k].data);
         if (bind_result !== null) {
           cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, bind_result.new_molecule);
           break;
@@ -1630,7 +1641,7 @@ function game_frame(delta_time: number) {
       while (any_changes) {
         any_changes = false;
         for (let k = 0; k < cur_vaus.length; k++) {
-          const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k]);
+          const bind_result = afterRecursiveVau(getAtAddress(cur_base_molecule, cur_molecule_address), cur_vaus[k].data);
           if (bind_result !== null) {
             cur_base_molecule = setAtAddress(cur_base_molecule, cur_molecule_address, bind_result.new_molecule);
             any_changes = true;
@@ -1667,13 +1678,13 @@ function game_frame(delta_time: number) {
     } else if (input.keyboard.wasPressed(KeyCode.Space)) {
       // any vau, anywhere in the molecule, with animation
       for (let k = 0; k < cur_vaus.length; k++) {
-        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
         if (bind_result !== null) {
           cur_molecule_view.animateToAdress(bind_result.bound_at);
           vau_index_visual_offset += k - cur_vau_index;
           cur_vau_index = k;
           let vau = cur_vaus[k];
-          doWhen(() => animate(bind_result, vau, false),
+          doWhen(() => animate(bind_result, vau.data, false),
             () => vau_index_visual_offset === 0);
           break;
         }
@@ -1716,7 +1727,7 @@ function game_frame(delta_time: number) {
   }
   cur_vaus.forEach((vau, k) => {
     if (k !== cur_vau_index) {
-      drawVau(vau, offsetVauView(base_vau_view, k - cur_vau_index + vau_index_visual_offset));
+      drawVau(vau.data, offsetVauView(base_vau_view, k - cur_vau_index + vau_index_visual_offset));
     }
   })
   vau_index_visual_offset = towards(vau_index_visual_offset, 0, Math.ceil(Math.abs(vau_index_visual_offset) * .8 + .1) * delta_time / .2);
@@ -1729,7 +1740,7 @@ function game_frame(delta_time: number) {
   if (.85 < (vauToolbarRect(cur_vau_index - vau_index_visual_offset).right / canvas_size.x)) vau_toolbar_offset -= _1 * delta_time;
   // vau_toolbar_offset = 0;
   cur_vaus.forEach((vau, k) => {
-    drawVau(vau, {
+    drawVau(vau.data, {
       pos: canvas_size.mulXY(.1 + k * .1 + vau_toolbar_offset, .95),
       halfside: base_vau_view.halfside * .15
     })
@@ -1751,8 +1762,9 @@ function game_frame(delta_time: number) {
     let base_rect = vauToolbarRect(cur_vau_index);
     let asdf = Rectangle.fromParams({ bottomLeft: base_rect.topLeft, size: base_rect.size.scale(1 / 3) });
     asdf.topLeft = asdf.topLeft.subX(asdf.size.x);
+    let asdf2 = Rectangle.fromParams({ bottomLeft: asdf.topLeft, size: base_rect.size.mulXY(5/3, 1/3) });
     if (button("+", asdf)) {
-      cur_vaus.splice(cur_vau_index, 0, cloneSexpr(cur_vau) as Pair);
+      cur_vaus.splice(cur_vau_index, 0, {data: cloneSexpr(cur_vau) as Pair, single_use: false, used: false});
       vau_index_visual_offset = -1;
       save_cur_level();
     }
@@ -1782,20 +1794,24 @@ function game_frame(delta_time: number) {
     }
     asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
     if (button("+", asdf)) {
-      cur_vaus.splice(cur_vau_index + 1, 0, cloneSexpr(cur_vau) as Pair);
+      cur_vaus.splice(cur_vau_index + 1, 0, {data: cloneSexpr(cur_vau) as Pair, single_use: false, used: false});
       cur_vau_index += 1;
       vau_index_visual_offset = 1;
       save_cur_level();
     }
+    if (button(cur_vaus[cur_vau_index].single_use ? "make normal" : "make one-use", asdf2)) {
+      cur_vaus[cur_vau_index].single_use = !cur_vaus[cur_vau_index].single_use;
+      cur_vaus[cur_vau_index].used = false;
+    }
   }
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
-    cur_vaus.unshift(cloneSexpr(default_vau) as Pair);
+    cur_vaus.unshift({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
     vau_index_visual_offset = -(cur_vau_index + 1);
     cur_vau_index = 0;
     save_cur_level();
   }
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length + vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
-    cur_vaus.push(cloneSexpr(default_vau) as Pair);
+    cur_vaus.push({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
     vau_index_visual_offset = cur_vaus.length - cur_vau_index - 1;
     cur_vau_index = cur_vaus.length - 1;
     save_cur_level();
@@ -1834,7 +1850,7 @@ function game_frame(delta_time: number) {
       if (animation_state === null) {
         // any vau, anywhere in the molecule, with paused animation
         for (let k = 0; k < cur_vaus.length; k++) {
-          let bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+          let bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
           if (null !== bind_result) {
             if (k !== cur_vau_index || !eqArrays(bind_result.bound_at, cur_molecule_address)) {
               // step 1: move to the correct vau and view
@@ -1856,13 +1872,13 @@ function game_frame(delta_time: number) {
     if (button(">", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 100 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) }))) {
       // any vau, anywhere in the molecule, with animation
       for (let k = 0; k < cur_vaus.length; k++) {
-        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
         if (bind_result !== null) {
           cur_molecule_view.animateToAdress(bind_result.bound_at);
           vau_index_visual_offset += k - cur_vau_index;
           cur_vau_index = k;
           let vau = cur_vaus[k];
-          doWhen(() => animate(bind_result, vau, false, 2),
+          doWhen(() => animate(bind_result, vau.data, false, 2),
             () => vau_index_visual_offset === 0);
           break;
         }
@@ -1872,14 +1888,14 @@ function game_frame(delta_time: number) {
       && canInteract()) {
       // apply 1 vau fast
       for (let k = 0; k < cur_vaus.length; k++) {
-        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
         if (bind_result !== null) {
           cur_molecule_view.animateToAdress(bind_result.bound_at);
           // vau_index_visual_offset += k - cur_vau_index;
           vau_index_visual_offset = 0;
           cur_vau_index = k;
           let vau = cur_vaus[k];
-          animate(bind_result, vau, false, 5);
+          animate(bind_result, vau.data, false, 5);
           break;
         }
       }
@@ -1935,14 +1951,14 @@ function game_frame(delta_time: number) {
         // apply another vau
         let any_changes = false;
         for (let k = 0; k < cur_vaus.length; k++) {
-          const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k]);
+          const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
           if (bind_result !== null) {
             cur_molecule_view.animateToAdress(bind_result.bound_at);
             // vau_index_visual_offset += k - cur_vau_index;
             vau_index_visual_offset = 0;
             cur_vau_index = k;
             let vau = cur_vaus[k];
-            animate(bind_result, vau, false, 100);
+            animate(bind_result, vau.data, false, 100);
             any_changes = true;
             break;
           }
@@ -1963,7 +1979,7 @@ function game_frame(delta_time: number) {
               cur_level.user_slots[cur_solution_slot].stats = {
                 n_vaus: cur_vaus.length,
                 n_steps: testing_animation_state.total_iters / N_TESTS,
-                n_colors: new Set(cur_vaus.flatMap(allAtoms)).size,
+                n_colors: new Set(cur_vaus.flatMap(x => allAtoms(x.data))).size,
               }
               testing_animation_state.result = "success";
               save_cur_level();
