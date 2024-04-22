@@ -828,19 +828,13 @@ let levels: Level[] = [
   ),
   new Level(
     "switch",
-    "Switcheroo:\nSeems like we assembled\nsome samples the wrong way around,\n&(v1 . v2)& instead of &(v2 . v1)&. They are\nmarked with &input&; once corrected,\nmark them with &output&. In other words,\ngiven &(input . (v1 . v2))&, return &(output . (v2 . v1))&.",
+    "Switcheroo:\nSeems like we assembled\nsome samples the wrong way around,\n&(v1 . v2)& instead of &(v2 . v1)&. Correct them.",
     (rand) => {
       let v1 = makeRandomSexpr(rand, 4, misc_atoms);
       let v2 = makeRandomSexpr(rand, 4, misc_atoms);
       return [
-        doPair(
-          doAtom("input"),
-          doPair(v1, v2)
-        ),
-        doPair(
-          doAtom("output"),
-          doPair(v2, v1)
-        ),
+        doPair(v1, v2),
+        doPair(v2, v1),
       ];
     },
   ),
@@ -879,14 +873,14 @@ let levels: Level[] = [
       rand.next();
       let values = fromCount(randomInt(rand, 0, 10), _ => randomChoice(rand, misc_atoms));
       return [
-        doPair(doAtom("input"), doList(values)),
+        doList(values),
         makePeanoSexpr(values.filter(v => v.value === "v1").length)
       ];
     }
   ),
   new Level(
     "reverse",
-    "List Reverse:\nGiven a list of &v1&, &v2&, &v3&,\nmarked with &input& at the start,\nreverse it.",
+    "List Reverse:\nGiven a list of &v1&, &v2&, &v3&,\nreverse it.",
     (rand) => {
       rand.next();
       function randomSexpr(max_depth: number): Sexpr {
@@ -899,17 +893,14 @@ let levels: Level[] = [
       // let asdf = fromCount(randomInt(rand, 0, 4), _ => randomSexpr(randomInt(rand, 1, 3)));
       let asdf = fromCount(randomInt(rand, 0, 4), _ => randomSexpr(0));
       return [
-        doPair(
-          doAtom("input"),
-          doList(asdf),
-        ),
+        doList(asdf),
         doList(reversed(asdf)),
       ]
     }
   ),
   new Level(
     "equal",
-    "Equality Check:\nGiven a pair of samples\n(marked by &input&),\nreturn &true& if they are equal\nand &false& otherwise.",
+    "Equality Check:\nGiven a pair of samples\nreturn &true& if they are equal\nand &false& otherwise.",
     (rand) => {
       let generate_equal = rand.next() > .5;
       function helper(equal: boolean, max_depth: number): [Sexpr, Sexpr] {
@@ -930,10 +921,7 @@ let levels: Level[] = [
         }
       }
       return [
-        doPair(
-          doAtom("input"),
-          doPair(...helper(generate_equal, Math.floor(rand.next() * 5))),
-        ),
+        doPair(...helper(generate_equal, Math.floor(rand.next() * 5))),
         doAtom(generate_equal ? "true" : "false"),
       ]
     }
@@ -965,14 +953,14 @@ let levels: Level[] = [
           let values = fromCount(randomInt(rand, 0, 4), _ => randomChoice(rand, misc_atoms));
           let reversed_values = values.slice().reverse();
           return [
-            doPair(doAtom("input"), doList([...values, middle_value, ...reversed_values])),
+            doList([...values, middle_value, ...reversed_values]),
             doAtom("true")
           ];
         } else {
           let values = fromCount(randomInt(rand, 1, 4), _ => randomChoice(rand, misc_atoms));
           let reversed_values = values.slice().reverse();
           return [
-            doPair(doAtom("input"), doList([...values, ...reversed_values])),
+            doList([...values, ...reversed_values]),
             doAtom("true")
           ];
         }
@@ -981,7 +969,7 @@ let levels: Level[] = [
   ),
   new Level(
     "cadadar_easy",
-    "Address Lookup:\nWe have &(input . (f1 . v1))&, where &v1& is a sample\nand &f1& is an address in that sample.\nThe address is a list of &true& and &false&,\nwhere &true& means the top subsample\nand &false& the bottom one. For example,\n&(true true)& would mean 'the top half of the\ntop half of the sample'; for\n&((v1 . v2) . v3)&, it would be &v1&.",
+    "Address Lookup:\nWe have &(f1 . v1)&, where &v1& is a sample\nand &f1& is an address in that sample.\nThe address is a list of &true& and &false&,\nwhere &true& means the top subsample\nand &false& the bottom one. For example,\n&(true true)& would mean 'the top half of the\ntop half of the sample'; for\n&((v1 . v2) . v3)&, it would be &v1&.",
     (rand) => {
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
@@ -1011,11 +999,8 @@ let levels: Level[] = [
       let result = getAtAddress(asdf, address);
       return [
         doPair(
-          doAtom("input"),
-          doPair(
-            doList(address.map(v => doAtom(v ? "true" : "false"))),
-            asdf
-          )
+          doList(address.map(v => doAtom(v ? "true" : "false"))),
+          asdf
         ),
         result
       ];
@@ -1023,7 +1008,7 @@ let levels: Level[] = [
   ),
   new Level(
     "lookup",
-    "Lookup Table:\nWe have &(input . (f1 . v1))&, where &v1& is a key\nand &f1& is a list of (key,value)\npairs (for example, &(v1 . f2)& would be\nkey &v1& and value &f2&).\nReturn the value for the given key.",
+    "Lookup Table:\nWe have &(f1 . v1)&, where &v1& is a key\nand &f1& is a list of (key,value)\npairs (for example, &(v1 . f2)& would be\nkey &v1& and value &f2&).\nReturn the value for the given key.",
     (rand) => {
       function randomSexpr(max_depth: number): Sexpr {
         if (max_depth === 0) return randomChoice(rand, misc_atoms);
@@ -1036,22 +1021,19 @@ let levels: Level[] = [
       let dict_values = keys.map(v => doPair(v, randomSexpr(4)));
       let selected = randomChoice(rand, dict_values);
       return [doPair(
-        doAtom("input"),
-        doPair(
-          doList(dict_values),
-          selected.left
-        )
+        doList(dict_values),
+        selected.left
       ), selected.right]
     }
   ),
   new Level(
     "multiply",
-    "Peano Multiplication:\nGiven a pair of numbers marked\nwith &input&, multiply them.",
+    "Peano Multiplication:\nGiven a pair of numbers,\nmultiply them.",
     (rand) => {
       let n1 = Math.floor(rand.next() * 6);
       let n2 = Math.floor(rand.next() * 6);
       return [
-        doPair(doAtom("input"), doPair(makePeanoSexpr(n1), makePeanoSexpr(n2))),
+        doPair(makePeanoSexpr(n1), makePeanoSexpr(n2)),
         makePeanoSexpr(n1 * n2),
       ];
     },
@@ -1084,7 +1066,7 @@ let levels: Level[] = [
         }
       }
       return [
-        doPair(doAtom("input"), doPair(doList(needle), doList(haystack))),
+        doPair(doList(needle), doList(haystack)),
         makePeanoSexpr(index),
       ];
     },
@@ -1097,14 +1079,14 @@ let levels: Level[] = [
       let list = shuffle(rand, Array(...zip2(counts, misc_atoms)).flatMap(([count, atom]) => fromCount(count, _ => atom)));
       let majority_atom = misc_atoms[argmax(counts)!];
       return [
-        doPair(doAtom("input"), doList(list)),
+        doList(list),
         majority_atom
       ];
     },
   ),
   new Level(
     "setAtAddress",
-    "Write At Address:\nGiven a needle, a haystack, and an address,\nplace the needle on the haystack at that address.\nInput format is &(input . ((v1 . v2) . nil))&, with &v1& as haystack,\n&v2& as needle, and &nil& the address\nin the same format as Address Lookup.",
+    "Write At Address:\nGiven a needle, a haystack, and an address,\nplace the needle on the haystack at that address.\nInput format is &((v1 . v2) . nil)&, with &v1& as haystack,\n&v2& as needle, and &nil& the address\nin the same format as Address Lookup.",
     (rand) => {
       function randomSexpr(max_depth: number, must_have: Address): Sexpr {
         if (max_depth < must_have.length) throw new Error("");
@@ -1135,14 +1117,11 @@ let levels: Level[] = [
       let result = setAtAddress(haystack, address, needle);
       return [
         doPair(
-          doAtom("input"),
           doPair(
-            doPair(
-              haystack,
-              needle
-            ),
-            doList(address.map(v => doAtom(v ? "true" : "false"))),
-          )
+            haystack,
+            needle
+          ),
+          doList(address.map(v => doAtom(v ? "true" : "false"))),
         ),
         result
       ];
@@ -1183,10 +1162,7 @@ let levels: Level[] = [
         problem = doPair(doAtom(v ? "true" : "false"), problem);
       });
       return [
-        doPair(
-          doAtom("input"),
-          problem
-        ),
+        problem,
         result
       ];
     }
@@ -1251,6 +1227,7 @@ function recalcScores(level: Level) {
     let total_steps = 0;
     // const N_TESTS = 20;
     for (let test_n = 0; test_n < N_TESTS; test_n++) {
+      resetUsedOnce();
       let [molecule, target] = level.get_test(test_n);
       let any_changes = true;
       let n_steps = 0;
@@ -1980,6 +1957,7 @@ function game_frame(delta_time: number) {
           if (eqSexprs(cur_base_molecule, cur_target)) {
             // solved the test case
             if (testing_animation_state.test_case_n < N_TESTS) {
+              resetUsedOnce();
               testing_animation_state.test_case_n += 1;
               testing_animation_state.total_iters += testing_animation_state.cur_iters;
               testing_animation_state.cur_iters = 0;
