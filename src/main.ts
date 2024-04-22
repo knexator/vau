@@ -165,7 +165,7 @@ const default_vau: Pair = parseSexpr(`(
   (@2 . nil)
 )`) as Pair;
 
-type UserVau = {data: Pair, single_use: boolean, used: boolean};
+type UserVau = { data: Pair, single_use: boolean, used: boolean };
 let cur_vaus: UserVau[] = [
   parseSexpr(`(
     (+ . ((@h . @t) . @b))
@@ -177,7 +177,7 @@ let cur_vaus: UserVau[] = [
     .
     @a
   )`) as Pair,
-].map(x => ({data: x, single_use: false, used: false}));
+].map(x => ({ data: x, single_use: false, used: false }));
 let cur_vau_index = 0;
 let vau_index_visual_offset = 0;
 let vau_toolbar_offset = 0;
@@ -1076,7 +1076,7 @@ let levels: Level[] = [
       while (!checked) {
         checked = true;
         for (let k = 0; k < index; k++) {
-          if (eqArraysWithFn(needle, haystack.slice(k, k + needle.length), (x,y) => x.value === y.value)) {
+          if (eqArraysWithFn(needle, haystack.slice(k, k + needle.length), (x, y) => x.value === y.value)) {
             haystack[k] = randomChoice(rand, misc_atoms);
             checked = false;
             break;
@@ -1229,7 +1229,7 @@ function canInteract() {
         }
         x.vaus = x.vaus.map(v => {
           if (v.data === undefined) {
-            return {data: v as never as Pair, used: false, single_use: false} as UserVau;
+            return { data: v as never as Pair, used: false, single_use: false } as UserVau;
           } else {
             return v;
           }
@@ -1525,6 +1525,7 @@ function enterLevel(slot_index: number, level: Level, test_case: number = 0) {
   cur_molecule_address = [];
   cur_molecule_view.instantlyUpdateTarget();
   [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
+  resetUsedOnce();
 }
 
 function game_frame(delta_time: number) {
@@ -1564,7 +1565,7 @@ function game_frame(delta_time: number) {
         cur_vau_index -= 1;
         vau_index_visual_offset -= 1;
       } else {
-        cur_vaus.unshift({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
+        cur_vaus.unshift({ data: cloneSexpr(default_vau) as Pair, single_use: false, used: false });
         save_cur_level();
       }
     }
@@ -1573,7 +1574,7 @@ function game_frame(delta_time: number) {
         cur_vau_index += 1;
         vau_index_visual_offset += 1;
       } else {
-        cur_vaus.push({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
+        cur_vaus.push({ data: cloneSexpr(default_vau) as Pair, single_use: false, used: false });
         save_cur_level();
         cur_vau_index += 1;
         vau_index_visual_offset += 1;
@@ -1608,7 +1609,7 @@ function game_frame(delta_time: number) {
 
   }
   if (cur_vaus.length === 0) {
-    cur_vaus.push({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
+    cur_vaus.push({ data: cloneSexpr(default_vau) as Pair, single_use: false, used: false });
     save_cur_level();
   }
   const cur_vau = cur_vaus[cur_vau_index].data;
@@ -1762,9 +1763,9 @@ function game_frame(delta_time: number) {
     let base_rect = vauToolbarRect(cur_vau_index);
     let asdf = Rectangle.fromParams({ bottomLeft: base_rect.topLeft, size: base_rect.size.scale(1 / 3) });
     asdf.topLeft = asdf.topLeft.subX(asdf.size.x);
-    let asdf2 = Rectangle.fromParams({ bottomLeft: asdf.topLeft, size: base_rect.size.mulXY(5/3, 1/3) });
+    let asdf2 = Rectangle.fromParams({ bottomLeft: asdf.topLeft, size: base_rect.size.mulXY(5 / 3, 1 / 3) });
     if (button("+", asdf)) {
-      cur_vaus.splice(cur_vau_index, 0, {data: cloneSexpr(cur_vau) as Pair, single_use: false, used: false});
+      cur_vaus.splice(cur_vau_index, 0, { data: cloneSexpr(cur_vau) as Pair, single_use: false, used: false });
       vau_index_visual_offset = -1;
       save_cur_level();
     }
@@ -1794,7 +1795,7 @@ function game_frame(delta_time: number) {
     }
     asdf.topLeft = asdf.topLeft.addX(asdf.size.x);
     if (button("+", asdf)) {
-      cur_vaus.splice(cur_vau_index + 1, 0, {data: cloneSexpr(cur_vau) as Pair, single_use: false, used: false});
+      cur_vaus.splice(cur_vau_index + 1, 0, { data: cloneSexpr(cur_vau) as Pair, single_use: false, used: false });
       cur_vau_index += 1;
       vau_index_visual_offset = 1;
       save_cur_level();
@@ -1805,13 +1806,13 @@ function game_frame(delta_time: number) {
     }
   }
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
-    cur_vaus.unshift({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
+    cur_vaus.unshift({ data: cloneSexpr(default_vau) as Pair, single_use: false, used: false });
     vau_index_visual_offset = -(cur_vau_index + 1);
     cur_vau_index = 0;
     save_cur_level();
   }
   if (button("+", Rectangle.fromParams({ bottomLeft: canvas_size.mulXY(.06 + .1 * cur_vaus.length + vau_toolbar_offset, 1), size: Vec2.both(50 * _1) }))) {
-    cur_vaus.push({data: cloneSexpr(default_vau) as Pair, single_use: false, used: false});
+    cur_vaus.push({ data: cloneSexpr(default_vau) as Pair, single_use: false, used: false });
     vau_index_visual_offset = cur_vaus.length - cur_vau_index - 1;
     cur_vau_index = cur_vaus.length - 1;
     save_cur_level();
@@ -1850,7 +1851,9 @@ function game_frame(delta_time: number) {
       if (animation_state === null) {
         // any vau, anywhere in the molecule, with paused animation
         for (let k = 0; k < cur_vaus.length; k++) {
-          let bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
+          const vau = cur_vaus[k];
+          if (vau.single_use && vau.used) continue;
+          let bind_result = afterRecursiveVau(cur_base_molecule, vau.data);
           if (null !== bind_result) {
             if (k !== cur_vau_index || !eqArrays(bind_result.bound_at, cur_molecule_address)) {
               // step 1: move to the correct vau and view
@@ -1859,6 +1862,7 @@ function game_frame(delta_time: number) {
               cur_molecule_view.animateToAdress(bind_result.bound_at);
             } else {
               // step 2: animate until bind
+              vau.used = true;
               animate(bind_result, cur_vau, true);
             }
             break;
@@ -1872,12 +1876,14 @@ function game_frame(delta_time: number) {
     if (button(">", Rectangle.fromParams({ topRight: new Vec2(canvas_size.x - 100 * _1, 75 * _1), size: new Vec2(50, 50).scale(_1) }))) {
       // any vau, anywhere in the molecule, with animation
       for (let k = 0; k < cur_vaus.length; k++) {
-        const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
+        const vau = cur_vaus[k];
+        if (vau.single_use && vau.used) continue;
+        const bind_result = afterRecursiveVau(cur_base_molecule, vau.data);
         if (bind_result !== null) {
           cur_molecule_view.animateToAdress(bind_result.bound_at);
           vau_index_visual_offset += k - cur_vau_index;
           cur_vau_index = k;
-          let vau = cur_vaus[k];
+          vau.used = true;
           doWhen(() => animate(bind_result, vau.data, false, 2),
             () => vau_index_visual_offset === 0);
           break;
@@ -1888,13 +1894,15 @@ function game_frame(delta_time: number) {
       && canInteract()) {
       // apply 1 vau fast
       for (let k = 0; k < cur_vaus.length; k++) {
+        const vau = cur_vaus[k];
+        if (vau.single_use && vau.used) continue;
         const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
         if (bind_result !== null) {
           cur_molecule_view.animateToAdress(bind_result.bound_at);
           // vau_index_visual_offset += k - cur_vau_index;
           vau_index_visual_offset = 0;
           cur_vau_index = k;
-          let vau = cur_vaus[k];
+          vau.used = true;
           animate(bind_result, vau.data, false, 5);
           break;
         }
@@ -1909,6 +1917,7 @@ function game_frame(delta_time: number) {
     if (cur_test_case > 0) {
       if (button("<", Rectangle.fromParams({ topLeft: new Vec2(0, 0), size: new Vec2(50, 50).scale(_1) }))) {
         cur_test_case -= 1;
+        resetUsedOnce();
         [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
         cur_molecule_address = [];
         cur_molecule_view.instantlyUpdateTarget();
@@ -1917,6 +1926,7 @@ function game_frame(delta_time: number) {
     }
     if (button(">", Rectangle.fromParams({ topLeft: new Vec2(150, 0).scale(_1), size: new Vec2(50, 50).scale(_1) }))) {
       cur_test_case += 1;
+      resetUsedOnce();
       [cur_base_molecule, cur_target] = cur_level.get_test(cur_test_case);
       cur_molecule_address = [];
       cur_molecule_view.instantlyUpdateTarget();
@@ -1951,13 +1961,15 @@ function game_frame(delta_time: number) {
         // apply another vau
         let any_changes = false;
         for (let k = 0; k < cur_vaus.length; k++) {
-          const bind_result = afterRecursiveVau(cur_base_molecule, cur_vaus[k].data);
+          let vau = cur_vaus[k];
+          if (vau.single_use && vau.used) continue;
+          const bind_result = afterRecursiveVau(cur_base_molecule, vau.data);
           if (bind_result !== null) {
             cur_molecule_view.animateToAdress(bind_result.bound_at);
             // vau_index_visual_offset += k - cur_vau_index;
             vau_index_visual_offset = 0;
             cur_vau_index = k;
-            let vau = cur_vaus[k];
+            vau.used = true;
             animate(bind_result, vau.data, false, 100);
             any_changes = true;
             break;
@@ -2360,6 +2372,12 @@ function animate(
 let pending_dowhens: { action: () => void, condition: () => boolean }[] = [];
 function doWhen(action: () => void, condition: () => boolean) {
   pending_dowhens.push({ action, condition });
+}
+
+function resetUsedOnce() {
+  cur_vaus.forEach(v => {
+    v.used = false;
+  });
 }
 
 // library stuff /////////////////////////
